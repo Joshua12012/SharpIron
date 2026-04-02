@@ -1,0 +1,6 @@
+.env
+__pycache__/
+.myenv/
+server/.gradio/
+server/__pycache__
+server/saved_models/
