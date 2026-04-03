@@ -6,6 +6,6 @@
 
 """Federated Rlagent environment server components."""
 
-from .federated_RLAgent_environment import FederatedRlagentEnvironment
+from .environment import FederatedRlagentEnvironment
 
 __all__ = ["FederatedRlagentEnvironment"]
