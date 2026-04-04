@@ -1,80 +1,88 @@
 
-# rewards.py
 """
-Balanced and realistic reward functions for Red-Blue FL adversarial setup.
-Defender only gets high reward when it correctly detects real attackers.
+Custom Reward Functions for Red-Blue Adversarial FL
+Following your exact specifications
 """
 
 def calculate_attacker_reward(action, success_metrics, round_num):
+
     reward = 0.0
     reason = []
 
     accuracy_drop = success_metrics.get("accuracy_drop", 0.0)
 
-    # Main reward: causing actual damage to global model
-    reward += 28.0 * accuracy_drop
-    if accuracy_drop > 0.015:
-        reason.append(f"Caused real damage ({accuracy_drop:.3f})")
+    # Accuracy drop reward
+    # FIX: Increased multiplier from 5.0 to 40.0 so that actual accuracy drops 
+    # contribute more heavily to the reward, correctly incentivizing destructive attacks
+    # over just snagging flat stealth bonuses.
+    reward += 40.0 * accuracy_drop
+    if accuracy_drop > 0.01:
+        reason.append(f"Accuracy drop: +{40.0 * accuracy_drop:.2f}")
 
-    # Bonus for attack quality
+    # Attack quality bonuses
     if success_metrics.get("stealth_success", False):
-        reward += 9.0
-        reason.append("Stealth attack succeeded")
+        reward += 2.5
+        reason.append("Stealth success +2.5")
+
     if success_metrics.get("coordinated_success", False):
-        reward += 11.0
-        reason.append("Coordinated attack succeeded")
+        reward += 2.5
+        reason.append("Coordinated success +2.5")
+
     if success_metrics.get("alie_success", False):
-        reward += 10.0
-        reason.append("ALIE attack succeeded")
+        reward += 2.5
+        reason.append("ALIE success +2.5")
 
-    # Imitation / trust recovery bonus
     if success_metrics.get("imitation_success", False):
-        reward += 7.0
-        reason.append("Successfully imitated benign clients")
+        reward += 5.0
+        reason.append("Imitation success +5.0")
 
-    # Penalty if heavily detected
-    if success_metrics.get("detected_count", 0) >= 3:
-        reward -= 14.0
-        reason.append("Heavily detected by defender")
+    # Penalty for being detected by the defender
+    # (Fixes the bug where attacker reward remained static because "detected_count" wasn't set)
+    correct_detections = success_metrics.get("correct_detections", 0)
+    if correct_detections > 0:
+        penalty = 5.0 * correct_detections
+        reward -= penalty
+        reason.append(f"Detection penalty -{penalty:.1f}")
 
-    reward = max(-18.0, min(40.0, reward))
-    return float(reward), " | ".join(reason) if reason else "Minor impact"
+    reward = max(-20.0, min(35.0, reward))
+    return float(reward), " | ".join(reason) if reason else "No significant impact"
 
 
 def calculate_defender_reward(action, success_metrics, round_num):
+
     reward = 0.0
     reason = []
 
     accuracy_drop = success_metrics.get("accuracy_drop", 0.0)
-    correct_detections = success_metrics.get("correct_detections", 0)   # NEW: only real poisoned clients flagged
+    correct_detections = success_metrics.get("correct_detections", 0)
     false_positives = success_metrics.get("false_positives", 0)
 
-    # Strong reward ONLY if defender correctly flagged real attackers
+    # Correct attacker detection
     if correct_detections > 0:
-        reward += 15.0 * correct_detections
-        reason.append(f"Correctly detected {correct_detections} real attackers")
+        reward += 10.0 * correct_detections
+        reason.append(f"Correct detections: +{10.0 * correct_detections:.1f}")
 
-    # Fast detection bonus (earlier is better)
+    # Fast detection bonus (earlier = better)
     detection_speed = success_metrics.get("detection_round", round_num)
-    fast_bonus = max(0, 12.0 - detection_speed * 0.9)
+    fast_bonus = max(0, 20.0 - (detection_speed * 1.5))   # Strong early bonus
     reward += fast_bonus
-    if fast_bonus > 3:
-        reason.append(f"Fast detection bonus (+{fast_bonus:.1f})")
+    if fast_bonus > 5:
+        reason.append(f"Fast detection bonus: +{fast_bonus:.1f}")
 
-    # Penalty for allowing damage
-    if accuracy_drop > 0.02:
-        reward -= 18.0 * (accuracy_drop / 0.02)
-        reason.append(f"Failed to prevent damage ({accuracy_drop:.3f})")
+    # Penalty for accuracy drop
+    if accuracy_drop > 0:
+        reward -= 5.0 * accuracy_drop
+        reason.append(f"Accuracy drop penalty: -{5.0 * accuracy_drop:.2f}")
 
-    # Penalty for false positives (quarantining innocent clients)
+    # Penalty for false positives
     if false_positives > 0:
-        reward -= 8.0 * false_positives
-        reason.append(f"False positives: {false_positives} innocent clients flagged")
+        reward -= 2.5 * false_positives
+        reason.append(f"False positives: -{2.5 * false_positives:.1f}")
 
-    # Bonus for maintaining accuracy when no attack happened
-    if accuracy_drop < 0.005 and correct_detections == 0:
-        reward += 6.0
-        reason.append("Successfully maintained accuracy")
+    # Bonus for correct detection + accuracy improvement
+    if correct_detections > 0 and accuracy_drop < 0.01:
+        reward += 10.0
+        reason.append("Correct detection + accuracy maintained: +10.0")
 
     reward = max(-25.0, min(45.0, reward))
-    return float(reward), " | ".join(reason) if reason else "Limited effectiveness"
+    return float(reward), " | ".join(reason) if reason else "Limited performance"

@@ -42,7 +42,10 @@ class FederatedAdversarialEnv:
         """Generate simulated client weight updates"""
         updates = []
         for i in range(self.num_clients):
-            if is_poisoned:
+            # FIX: Previously, if is_poisoned was True, ALL 20 clients were receiving massive poisoned updates.
+            # Now, it correctly applies poisoned noise ONLY to the selected poisoner_ids,
+            # meaning the telemetry will actually highlight the correct clients instead of being random static.
+            if is_poisoned and getattr(self, 'poisoner_ids', None) and i in self.poisoner_ids:
                 # Poisoned update - scaled and noisy
                 base = np.random.normal(0, 0.5, 10) * attack_strength
                 updates.append(base.tolist())
@@ -120,7 +123,8 @@ class FederatedAdversarialEnv:
         )
         
         previous_acc = self.global_accuracy
-        self._update_global_model()
+        # FIX: Now explicitly passing the attacker's strength to the global model update
+        self._update_global_model(attack_strength=attacker_action.strength)
         
         accuracy_drop = previous_acc - self.global_accuracy
         
@@ -177,32 +181,41 @@ class FederatedAdversarialEnv:
         
         return obs, attacker_reward, defender_reward, info
 
-    def _update_global_model(self):
+    def _update_global_model(self, attack_strength: float = 1.0):
         """Simple simulation of global model update"""
         # In real FL this would be aggregation. Here we simulate impact
         if self.poisoner_ids:
-            damage = 0.08 * len(self.poisoner_ids) / self.num_clients
-            self.global_accuracy = max(0.45, self.global_accuracy - damage)
+            # FIX: Multiplier bumped to 0.25 so the model accuracy is significantly reduced by sustained attacks.
+            # Removed the artificial 0.45 floor so accuracy can genuinely drop to 0 in extended rounds.
+            damage = 0.25 * attack_strength * len(self.poisoner_ids) / self.num_clients
+            self.global_accuracy = max(0.0, self.global_accuracy - damage)
         else:
             self.global_accuracy = min(0.96, self.global_accuracy + 0.01)
 
     def _get_observation(self) -> Observation:
         """Observation visible to both agents (no ground truth poisoner count)"""
         # Compute some telemetry features
-        norms = [np.linalg.norm(np.array(update)) for update in self.client_updates]
-        variances = [np.var(update) for update in self.client_updates]
+        norms = [float(np.linalg.norm(np.array(update))) for update in self.client_updates]
+        variances = [float(np.var(update)) for update in self.client_updates]
+        
+        # FIX: The Defender LLM was struggling to associate large raw arrays with the correct client index,
+        # causing it to randomly guess [0, 1, 13] constantly. 
+        # Here we pre-digest the arrays to highlight statistical outliers (top 3 highest norms) to guide the defender.
+        anomalies = sorted(range(len(norms)), key=lambda i: norms[i], reverse=True)[:3]
         
         telemetry = {
-            "update_norms": norms,
-            "update_variances": variances,
+            "update_norms": [round(n, 4) for n in norms],
+            "update_variances": [round(v, 4) for v in variances],
+            "flagged_anomalies_for_defender": anomalies,
             "global_accuracy": self.global_accuracy,
+            "total_clients": self.num_clients,
             "round": self.current_round
         }
         
         return Observation(
             client_updates=self.client_updates,
             global_accuracy=self.global_accuracy,
-            round_number=self.current_round,
+            round=self.current_round,
             telemetry=telemetry,
             done=self.done
         )

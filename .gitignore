@@ -4,3 +4,5 @@ __pycache__/
 server/.gradio/
 server/__pycache__
 server/saved_models/
+server/test_model
+server/verify_simulation

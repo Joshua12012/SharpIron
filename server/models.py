@@ -23,7 +23,7 @@ class Observation(BaseModel):
     """What both agents observe"""
     client_updates: List[List[float]]  # Simulated weight updates (simplified)
     global_accuracy: float
-    round_number: int
+    round: int
     telemetry: Dict[str, Any]          # norms, variances, etc.
     done: bool
 

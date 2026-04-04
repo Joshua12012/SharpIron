@@ -1,4 +1,3 @@
-
 # app.py
 """
 Red-Blue Adversarial Federated Learning UI
@@ -18,6 +17,7 @@ from environment import FederatedAdversarialEnv
 from attacker import AttackerAgent
 from defender import DefenderAgent
 from models import AttackerAction, DefenderAction
+from graders import grader_summary
 
 # Global instances
 env = FederatedAdversarialEnv(num_clients=20, num_rounds=15)
@@ -67,34 +67,39 @@ def run_full_episode(selected_poisoners, num_clients, num_rounds, difficulty):
     acc_curve = [env.global_accuracy]
 
     for r in range(num_rounds):
+        # Create a light version of the observation for the LLMs (No raw floats)
+        light_obs = obs.dict() if hasattr(obs, 'dict') else obs.copy()
+        if "client_updates" in light_obs:
+            del light_obs["client_updates"]
+
         # Attacker acts
-        attacker_action = attacker_agent.act(
-            obs.dict() if hasattr(obs, 'dict') else obs, 
-            difficulty
-        )
+        attacker_action = attacker_agent.act(light_obs, difficulty)
 
         # Defender acts
-        defender_action = defender_agent.act(
-            obs.dict() if hasattr(obs, 'dict') else obs
-        )
+        defender_action = defender_agent.act(light_obs)
 
         # Environment step
         observation, attacker_reward, defender_reward, info = env.step(attacker_action, defender_action)
-
-        # Log this step in required format
+        
+        # Give feedback to both agents
+        attacker_agent.update_feedback(attacker_reward, info.get("attacker_reason", ""))
+        defender_agent.update_feedback(defender_reward, info.get("defender_reason", ""), defender_action.target_clients)
+        
         log_step(r+1, attacker_action, defender_action, observation, attacker_reward, defender_reward)
 
         acc_curve.append(observation.global_accuracy)
 
+        # FIX: Align keys and descriptions with graders.py requirements
         history.append({
             "Round": r + 1,
-            "Attacker": attacker_action.attack_type,
-            "Defender": defender_action.action_type,
+            "Attacker Action": f"{attacker_action.attack_type} on clients {attacker_action.target_clients}",
+            "Defender Action": f"{defender_action.action_type} on clients {defender_action.target_clients}",
             "Accuracy": f"{observation.global_accuracy:.3f}",
             "A_Reward": f"{attacker_reward:.2f}",
             "D_Reward": f"{defender_reward:.2f}"
         })
 
+        obs = observation
         time.sleep(0.35)
 
     df = pd.DataFrame(history)
@@ -111,6 +116,13 @@ Final Accuracy: **{env.global_accuracy:.3f}**
 """
 
     log_end(env.global_accuracy)
+        # Compute graders
+    grader_results = grader_summary(history, env.global_accuracy, num_rounds)
+    
+    result += f"\n\n**Graders:**\n"
+    result += f"Task 1 (Easy): {grader_results['tasks']['Task 1 (Easy - Accuracy Preservation)']}\n"
+    result += f"Task 2 (Medium): {grader_results['tasks']['Task 2 (Medium - Pattern Recognition)']}\n"
+    result += f"Task 3 (Hard): {grader_results['tasks']['Task 3 (Hard - Robust Defense)']}\n"
 
     return result, df, fig
 
@@ -142,18 +154,53 @@ def update_poison_client_choices(num_clients):
 
 # After all imports, before the functions, add this:
 
+# custom_theme = gr.themes.Soft(
+#     primary_hue="blue",
+#     secondary_hue="blue",
+#     neutral_hue="slate"
+# )
+
+# with gr.Blocks(
+#     title="Red-Blue Adversarial Federated Learning",
+#     theme=custom_theme,
+#     css="""
+#     .gradio-container { background-color: #f8fafc !important; }
+#     .prose h1 { color: #1e40af !important; font-weight: 600; }
+#     """
+# ) as demo:
+#     gr.Markdown("# Red-Blue Adversarial Federated Learning\n"
+#                 "**LLM-powered Attacker (Red) vs Defender (Blue)**")
+
+# Replace your current Blocks creation with this:
+
 custom_theme = gr.themes.Soft(
     primary_hue="blue",
     secondary_hue="blue",
-    neutral_hue="slate"
+    neutral_hue="slate",
+    spacing_size="md",
+    radius_size="lg",
 )
 
 with gr.Blocks(
     title="Red-Blue Adversarial Federated Learning",
     theme=custom_theme,
     css="""
-    .gradio-container { background-color: #f8fafc !important; }
-    .prose h1 { color: #1e40af !important; font-weight: 600; }
+    .gradio-container {
+        background-color: #f1f5f9 !important;   /* Soft light gray background */
+    }
+    .prose h1, .prose h2 {
+        color: #1e40af !important;
+        font-weight: 700;
+    }
+    .gr-button-primary {
+        background-color: #1e40af !important;
+        border-color: #1e40af !important;
+    }
+    .gr-textbox, .gr-plot, .gr-dataframe {
+        background-color: white !important;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
     """
 ) as demo:
     gr.Markdown("# Red-Blue Adversarial Federated Learning\n"
