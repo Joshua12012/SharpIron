@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SharpernerRL</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --a: #e8a020;
+  --a-bright: #ffcc44;
+  --a-dim: #5a3a00;
+  --a-mid: #a06010;
+  --a-glow: rgba(232,160,32,0.18);
+  --a-subtle: rgba(232,160,32,0.06);
+  --red: #ff4a2a;
+  --red-dim: #5a1800;
+  --teal: #20c8a0;
+  --teal-dim: #003a2a;
+  --bg: #080600;
+  --bg2: #0d0900;
+  --bg3: #110c00;
+  --line: #1e1400;
+  --line2: #2a1e00;
+  --text: #e8a020;
+  --text-bright: #ffcc44;
+  --text-dim: #4a3000;
+  --text-mid: #8a5a10;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: 28px;
+}
+
+/* Scanlines */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.09) 3px, rgba(0,0,0,0.09) 4px
+  );
+  pointer-events: none;
+  z-index: 9000;
+}
+
+/* Phosphor bloom vignette */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse 80% 70% at 50% 50%,
+    rgba(232,160,32,0.015) 0%,
+    transparent 60%,
+    rgba(0,0,0,0.7) 100%
+  );
+  pointer-events: none;
+  z-index: 9001;
+}
+
+/* ── HEADER BAR ── */
+.hdr {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--line2);
+  height: 44px;
+  display: flex;
+  align-items: stretch;
+  position: sticky; top: 0; z-index: 500;
+}
+.hdr-logo {
+  display: flex; align-items: center;
+  padding: 0 20px;
+  border-right: 1px solid var(--line2);
+  gap: 10px;
+}
+.hdr-logo-mark {
+  width: 24px; height: 24px;
+  border: 1.5px solid var(--a-mid);
+  transform: rotate(45deg);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.hdr-logo-mark::after {
+  content: '';
+  width: 8px; height: 8px;
+  background: var(--a);
+  transform: rotate(0deg);
+}
+.hdr-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--a-bright);
+  text-shadow: 0 0 20px rgba(255,200,60,0.35);
+}
+.hdr-sub {
+  font-size: 9px;
+  color: var(--text-mid);
+  letter-spacing: 2px;
+}
+.hdr-center {
+  flex: 1;
+  display: flex; align-items: center;
+  padding: 0 20px;
+  gap: 24px;
+}
+.hdr-sep { width: 1px; height: 24px; background: var(--line2); }
+.hdr-stat {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 1px;
+}
+.hdr-stat-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  color: var(--a-bright);
+}
+.hdr-stat-lbl {
+  font-size: 8px; letter-spacing: 2px; color: var(--text-dim);
+}
+.hdr-right {
+  display: flex; align-items: center;
+  padding: 0 16px;
+  border-left: 1px solid var(--line2);
+  gap: 12px;
+  font-size: 10px;
+}
+.hdr-clock {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: var(--a-bright);
+}
+.hdr-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-dim);
+  border: 1px solid var(--a-dim);
+}
+.hdr-indicator.live {
+  background: var(--a);
+  box-shadow: 0 0 6px var(--a);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+/* ── LAYOUT ── */
+.workspace {
+  display: grid;
+  grid-template-columns: 230px 1fr 200px;
+  grid-template-rows: 1fr;
+  height: calc(100vh - 44px - 28px);
+  gap: 0;
+  border-top: 0px;
+}
+
+/* ── PANEL BASE ── */
+.pane {
+  background: var(--bg);
+  border-right: 1px solid var(--line2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pane:last-child { border-right: none; }
+
+.pane-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--text-mid);
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.pane-title-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0px;
+}
+
+.pane-section {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.section-label {
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+/* ── SELECTS & CONTROLS ── */
+select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 6px 28px 6px 8px;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  border-radius: 0;
+  position: relative;
+  letter-spacing: 0.5px;
+  transition: border-color 0.15s, color 0.15s;
+}
+select:focus, select:hover {
+  border-color: var(--a-mid);
+  color: var(--a-bright);
+}
+select option { background: #080600; }
+.select-wrap { position: relative; margin-bottom: 8px; }
+.select-wrap::after {
+  content: '▾';
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  color: var(--text-mid); font-size: 10px; pointer-events: none;
+}
+
+/* ── HEX CLIENT GRID ── */
+.hex-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0;
+}
+.hex-node {
+  width: 32px; height: 32px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.12s;
+  border: 0; /* clip-path replaces border */
+  outline: none;
+  position: relative;
+  user-select: none;
+}
+.hex-node:hover { background: var(--a-dim); color: var(--a-mid); }
+.hex-node.poisoned {
+  background: var(--red-dim);
+  color: var(--red);
+}
+.hex-node.detected {
+  background: var(--teal-dim);
+  color: var(--teal);
+}
+.hex-legend {
+  display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap;
+}
+.hex-legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 9px; color: var(--text-dim); letter-spacing: 1px;
+}
+.hex-legend-dot {
+  width: 10px; height: 10px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* ── EXECUTE BUTTON ── */
+.exec-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--a-dim);
+  color: var(--text-mid);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  padding: 12px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+.exec-btn::before {
+  content: '';
+  position: absolute; top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(232,160,32,0.1), transparent);
+  transition: left 0.5s;
+}
+.exec-btn:hover {
+  border-color: var(--a);
+  color: var(--a-bright);
+  text-shadow: 0 0 12px rgba(255,200,60,0.6);
+}
+.exec-btn:hover::before { left: 100%; }
+.exec-btn:active { transform: scale(0.98); }
+.exec-btn:disabled {
+  color: var(--text-dim);
+  border-color: var(--line2);
+  cursor: not-allowed;
+}
+.exec-btn:disabled::before { display: none; }
+
+/* ── PROGRESS ── */
+.prog-track {
+  height: 2px;
+  background: var(--line2);
+  position: relative;
+  overflow: hidden;
+}
+.prog-fill {
+  height: 100%;
+  background: var(--a);
+  width: 0%;
+  transition: width 0.3s;
+  position: relative;
+}
+.prog-fill::after {
+  content: '';
+  position: absolute; right: 0; top: -3px;
+  width: 1px; height: 8px;
+  background: var(--a-bright);
+  box-shadow: 0 0 8px var(--a-bright);
+}
+.prog-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* ── CENTER PANE ── */
+.center-pane { border-right: 1px solid var(--line2); }
+
+/* STATS STRIP */
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-bottom: 1px solid var(--line2);
+  flex-shrink: 0;
+}
+.stat-cell {
+  padding: 10px 6px;
+  text-align: center;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.stat-cell:last-child { border-right: none; }
+.stat-cell::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--a-dim);
+}
+.stat-cell.hot::before { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.stat-cell.cool::before { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+.stat-cell.warn::before { background: var(--a); box-shadow: 0 0 6px var(--a); }
+
+.stat-v {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--a-bright);
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(255,200,60,0.3);
+}
+.stat-v.red { color: var(--red); text-shadow: 0 0 10px rgba(255,74,42,0.35); }
+.stat-v.teal { color: var(--teal); text-shadow: 0 0 10px rgba(32,200,160,0.35); }
+.stat-v.dim { color: var(--text-mid); text-shadow: none; }
+.stat-l { font-size: 8px; color: var(--text-dim); letter-spacing: 2px; margin-top: 3px; }
+
+/* DUAL CHART AREA */
+.chart-zone {
+  flex: 1;
+  display: grid;
+  grid-template-rows: 1fr 160px;
+  overflow: hidden;
+}
+
+.chart-panel {
+  padding: 10px 14px 6px;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+}
+.chart-panel-title {
+  font-size: 8px;
+  color: var(--text-dim);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+canvas { width: 100% !important; }
+#lineChart { height: 100% !important; min-height: 0; }
+
+.idle-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--text-dim);
+}
+.idle-diamond {
+  width: 40px; height: 40px;
+  border: 1px solid var(--a-dim);
+  transform: rotate(45deg);
+  display: flex; align-items: center; justify-content: center;
+  animation: idlePulse 3s ease-in-out infinite;
+}
+.idle-diamond::after {
+  content: '';
+  width: 16px; height: 16px;
+  background: var(--a-dim);
+  transform: rotate(0deg);
+}
+@keyframes idlePulse { 0%,100%{opacity:0.3;} 50%{opacity:0.8;} }
+.idle-text {
+  font-size: 9px; letter-spacing: 3px; color: var(--text-dim);
+  animation: idlePulse 3s ease-in-out infinite;
+}
+
+/* TABLE PANEL */
+.table-panel {
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.table-panel::-webkit-scrollbar { width: 3px; }
+.table-panel::-webkit-scrollbar-thumb { background: var(--a-dim); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+thead { position: sticky; top: 0; z-index: 10; }
+th {
+  background: var(--bg2);
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 400;
+  font-size: 8px;
+  letter-spacing: 2px;
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--line2);
+  white-space: nowrap;
+}
+td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-mid);
+  white-space: nowrap;
+}
+tr:hover td { background: var(--a-subtle); }
+td.hi { color: var(--a-bright); }
+td.r { color: var(--red); }
+td.t { color: var(--teal); }
+td.d { color: var(--text-dim); }
+
+.pill-atk {
+  font-size: 8px; padding: 1px 5px;
+  background: rgba(255,74,42,0.08);
+  border: 1px solid var(--red-dim);
+  color: var(--red);
+  letter-spacing: 0.5px;
+}
+.pill-def {
+  font-size: 8px; padding: 1px 5px;
+  background: rgba(32,200,160,0.06);
+  border: 1px solid var(--teal-dim);
+  color: var(--teal);
+  letter-spacing: 0.5px;
+}
+
+/* ── RIGHT PANE ── */
+.right-pane { border-right: none; }
+
+/* LOG */
+.log-stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.log-stream::-webkit-scrollbar { width: 2px; }
+.log-stream::-webkit-scrollbar-thumb { background: var(--a-dim); }
+
+.log-entry {
+  display: grid;
+  grid-template-columns: 52px 28px 1fr;
+  gap: 4px;
+  padding: 2px 10px;
+  align-items: start;
+  animation: logIn 0.15s ease;
+  font-size: 9px;
+  line-height: 1.6;
+}
+@keyframes logIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
+.log-ts { color: var(--text-dim); font-size: 8px; padding-top: 1px; }
+.log-tag {
+  font-size: 7px; padding: 1px 3px;
+  letter-spacing: 1px;
+  text-align: center;
+  align-self: start;
+  margin-top: 2px;
+}
+.tag-sys { color: var(--a-mid); border: 1px solid var(--a-dim); }
+.tag-atk { color: var(--red); border: 1px solid var(--red-dim); }
+.tag-def { color: var(--teal); border: 1px solid var(--teal-dim); }
+.tag-evt { color: var(--a-bright); border: 1px solid var(--a-mid); }
+.log-body { color: var(--text-mid); word-break: break-all; font-size: 9px; }
+.log-body .hl { color: var(--a-bright); }
+.log-body .rl { color: var(--red); }
+.log-body .tl { color: var(--teal); }
+
+/* METRICS BLOCK */
+.metrics-block {
+  border-top: 1px solid var(--line2);
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+}
+.metric-row:last-child { border-bottom: none; }
+.m-key { color: var(--text-dim); letter-spacing: 1px; font-size: 9px; }
+.m-val { color: var(--a-bright); font-size: 10px; }
+.m-val.r { color: var(--red); }
+.m-val.t { color: var(--teal); }
+
+/* GRADER */
+.grader-block {
+  border-top: 1px solid var(--line2);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+.grader-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 8px; letter-spacing: 3px;
+  color: var(--text-dim); margin-bottom: 6px;
+}
+.g-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 3px 0;
+  font-size: 9px;
+}
+.g-key { color: var(--text-dim); font-size: 8px; letter-spacing: 1px; }
+.grade {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px; font-weight: 700;
+  width: 26px; text-align: center;
+  border-bottom: 2px solid;
+}
+.ga { color: var(--teal); border-color: var(--teal); }
+.gb { color: var(--a-bright); border-color: var(--a); }
+.gc { color: #ff8c00; border-color: #7a4000; }
+.gf { color: var(--red); border-color: var(--red-dim); }
+.gq { color: var(--text-dim); border-color: var(--line2); }
+
+/* OUTCOME BANNER */
+.outcome-banner {
+  padding: 8px 12px;
+  border-top: 1px solid var(--line2);
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.outcome-banner.win {
+  color: var(--teal);
+  background: rgba(32,200,160,0.05);
+  border-color: var(--teal-dim);
+  text-shadow: 0 0 10px rgba(32,200,160,0.5);
+}
+.outcome-banner.lose {
+  color: var(--red);
+  background: rgba(255,74,42,0.05);
+  border-color: var(--red-dim);
+  text-shadow: 0 0 10px rgba(255,74,42,0.4);
+}
+
+/* ── STATUS BAR ── */
+.statusbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 28px;
+  background: var(--bg2);
+  border-top: 1px solid var(--line2);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 16px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  z-index: 500;
+  color: var(--text-dim);
+}
+.sb-state { color: var(--a); }
+.sb-ticker {
+  flex: 1;
+  overflow: hidden;
+}
+.sb-ticker-inner {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker 28s linear infinite;
+  color: var(--text-dim);
+}
+@keyframes ticker { from{transform:translateX(100vw);} to{transform:translateX(-100%);} }
+.sb-right { color: var(--text-dim); }
+.sb-sep { color: var(--line2); }
+
+/* Blink cursor */
+.blink { animation: blink 1s step-end infinite; }
+@keyframes blink { 50%{opacity:0;} }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-logo">
+    <div class="hdr-logo-mark"></div>
+    <div>
+      <div class="hdr-title">SENTINEL</div>
+      <div class="hdr-sub">ADVERSARIAL FL // RED-BLUE</div>
+    </div>
+  </div>
+  <div class="hdr-center">
+    <div class="hdr-stat">
+      <div class="hdr-stat-val" id="h-round">--</div>
+      <div class="hdr-stat-lbl">ROUND</div>
+    </div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-stat">
+      <div class="hdr-stat-val" id="h-det" style="color:var(--teal)">--</div>
+      <div class="hdr-stat-lbl">DETECTIONS</div>
+    </div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-stat">
+      <div class="hdr-stat-val" id="h-fn" style="color:var(--red)">--</div>
+      <div class="hdr-stat-lbl">BREACHES</div>
+    </div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-stat">
+      <div class="hdr-stat-val" id="h-acc">--</div>
+      <div class="hdr-stat-lbl">INTEGRITY</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-indicator" id="liveIndicator"></div>
+    <span id="hdrStatus" style="color:var(--text-dim);letter-spacing:1px;font-size:9px">IDLE</span>
+    <div class="hdr-sep"></div>
+    <div class="hdr-clock" id="clock">00:00:00</div>
+    <span class="blink" style="color:var(--a)">_</span>
+  </div>
+</header>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- LEFT: CONFIG -->
+  <div class="pane">
+    <div class="pane-title">
+      ENVIRONMENT CONFIG
+      <span class="pane-title-badge">V2.3</span>
+    </div>
+
+    <div class="pane-section">
+      <div class="section-label">Clients</div>
+      <div class="select-wrap">
+        <select id="numClients" onchange="rebuildGrid()">
+          <option value="10">10 NODES</option>
+          <option value="20" selected>20 NODES</option>
+          <option value="30">30 NODES</option>
+        </select>
+      </div>
+      <div class="section-label">Rounds</div>
+      <div class="select-wrap">
+        <select id="numRounds">
+          <option value="10">10 ROUNDS</option>
+          <option value="15" selected>15 ROUNDS</option>
+          <option value="20">20 ROUNDS</option>
+        </select>
+      </div>
+      <div class="section-label">Difficulty</div>
+      <div class="select-wrap">
+        <select id="difficulty">
+          <option value="Easy">EASY</option>
+          <option value="Medium" selected>MEDIUM</option>
+          <option value="Hard">HARD</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="pane-section" style="flex:1; overflow:hidden; overflow-y:auto;">
+      <div class="section-label" id="poisonLabel">POISONED NODES — 3 SELECTED</div>
+      <div class="hex-grid" id="hexGrid"></div>
+      <div class="hex-legend" style="margin-top:8px">
+        <div class="hex-legend-item">
+          <div class="hex-legend-dot" style="background:var(--red-dim)"></div>
+          POISON
+        </div>
+        <div class="hex-legend-item">
+          <div class="hex-legend-dot" style="background:var(--teal-dim)"></div>
+          CAUGHT
+        </div>
+        <div class="hex-legend-item">
+          <div class="hex-legend-dot" style="background:var(--bg3)"></div>
+          BENIGN
+        </div>
+      </div>
+    </div>
+
+    <div class="pane-section">
+      <button class="exec-btn" id="execBtn" onclick="runEpisode()">◈ EXECUTE</button>
+      <div style="margin-top:8px">
+        <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+        <div class="prog-label" id="progLabel">AWAITING INIT</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: MAIN -->
+  <div class="pane center-pane">
+    <!-- STATS STRIP -->
+    <div class="stats-strip">
+      <div class="stat-cell warn">
+        <div class="stat-v" id="s-round">00</div>
+        <div class="stat-l">ROUND</div>
+      </div>
+      <div class="stat-cell cool">
+        <div class="stat-v teal" id="s-det">0</div>
+        <div class="stat-l">TRUE POS</div>
+      </div>
+      <div class="stat-cell hot">
+        <div class="stat-v red" id="s-fn">0</div>
+        <div class="stat-l">MISSED</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-v dim" id="s-fp">0</div>
+        <div class="stat-l">FALSE POS</div>
+      </div>
+      <div class="stat-cell warn">
+        <div class="stat-v" id="s-acc">—</div>
+        <div class="stat-l">INTEGRITY</div>
+      </div>
+    </div>
+
+    <div class="chart-zone">
+      <!-- LINE CHART -->
+      <div class="chart-panel">
+        <div class="chart-panel-title">
+          <span>CUMULATIVE PERFORMANCE</span>
+          <span id="diffTag" style="color:var(--a-mid)">MEDIUM</span>
+        </div>
+        <div id="idleMsg" class="idle-placeholder">
+          <div class="idle-diamond"></div>
+          <div class="idle-text">NO EPISODE DATA</div>
+        </div>
+        <canvas id="lineChart" style="display:none"></canvas>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-panel">
+        <table>
+          <thead>
+            <tr>
+              <th>RND</th>
+              <th>ATTACK TYPE</th>
+              <th>TARGETS</th>
+              <th>DEFENSE</th>
+              <th>TP</th>
+              <th>FN</th>
+              <th>FP</th>
+              <th>INTEG</th>
+              <th>A±</th>
+              <th>D±</th>
+            </tr>
+          </thead>
+          <tbody id="tBody">
+            <tr><td colspan="10" class="d" style="text-align:center;padding:20px;letter-spacing:3px;font-size:9px">── NO EPISODE DATA ──</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: LOG + SUMMARY -->
+  <div class="pane right-pane">
+    <div class="pane-title">
+      SYS LOG
+      <span class="pane-title-badge" id="logCount">0 EVENTS</span>
+    </div>
+
+    <div class="log-stream" id="logStream">
+      <div class="log-entry">
+        <span class="log-ts">--:--:--</span>
+        <span class="log-tag tag-sys">SYS</span>
+        <span class="log-body">sentinel online. configure env and execute.</span>
+      </div>
+    </div>
+
+    <div class="outcome-banner" id="outcomeBanner">── AWAITING EPISODE ──</div>
+
+    <div class="metrics-block">
+      <div class="metric-row"><span class="m-key">PRECISION</span><span class="m-val" id="mPrec">—</span></div>
+      <div class="metric-row"><span class="m-key">RECALL</span><span class="m-val" id="mRec">—</span></div>
+      <div class="metric-row"><span class="m-key">F1 SCORE</span><span class="m-val" id="mF1">—</span></div>
+      <div class="metric-row"><span class="m-key">INTEGRITY</span><span class="m-val" id="mInteg">—</span></div>
+    </div>
+
+    <div class="grader-block">
+      <div class="grader-title">TASK GRADES</div>
+      <div class="g-row">
+        <span class="g-key">T1 · RECALL</span>
+        <span class="grade gq" id="g1">?</span>
+      </div>
+      <div class="g-row">
+        <span class="g-key">T2 · PRECISION</span>
+        <span class="grade gq" id="g2">?</span>
+      </div>
+      <div class="g-row">
+        <span class="g-key">T3 · RESILIENCE</span>
+        <span class="grade gq" id="g3">?</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUSBAR -->
+<div class="statusbar">
+  <span class="sb-state" id="sbState">● IDLE</span>
+  <span class="sb-sep">|</span>
+  <div class="sb-ticker">
+    <span class="sb-ticker-inner">
+      SENTINEL v2.3 // FEDERATED LEARNING ADVERSARIAL SIMULATION &nbsp;&nbsp;◈&nbsp;&nbsp; RED: LLM GRADIENT POISONER &nbsp;&nbsp;◈&nbsp;&nbsp; BLUE: LLM ANOMALY DETECTOR &nbsp;&nbsp;◈&nbsp;&nbsp; MULTI-ROUND EPISODE ENGINE READY &nbsp;&nbsp;◈&nbsp;&nbsp; CONFIGURE AND EXECUTE TO BEGIN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    </span>
+  </div>
+  <span class="sb-sep">|</span>
+  <span class="sb-right" id="sbRight">SYS:OK</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ── CLOCK
+function tick() {
+  document.getElementById('clock').textContent = new Date().toTimeString().slice(0,8);
+}
+setInterval(tick, 1000); tick();
+
+// ── HEX GRID
+let poisoned = new Set([3,7,12]);
+
+function rebuildGrid() {
+  const n = parseInt(document.getElementById('numClients').value);
+  const g = document.getElementById('hexGrid');
+  g.innerHTML = '';
+  for (const id of [...poisoned]) if (id >= n) poisoned.delete(id);
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('div');
+    el.className = 'hex-node' + (poisoned.has(i) ? ' poisoned' : '');
+    el.textContent = String(i).padStart(2,'0');
+    el.title = 'C-' + String(i).padStart(2,'0');
+    el.onclick = () => { poisoned.has(i) ? poisoned.delete(i) : poisoned.add(i); rebuildGrid(); };
+    g.appendChild(el);
+  }
+  document.getElementById('poisonLabel').textContent = `POISONED NODES — ${poisoned.size} SELECTED`;
+}
+rebuildGrid();
+
+// ── DIFFICULTY TAG
+document.getElementById('difficulty').onchange = function() {
+  document.getElementById('diffTag').textContent = this.value.toUpperCase();
+};
+
+// ── LOG
+let logCount = 0;
+function log(tag, cls, msg) {
+  const s = document.getElementById('logStream');
+  const ts = new Date().toTimeString().slice(0,8);
+  const e = document.createElement('div');
+  e.className = 'log-entry';
+  e.innerHTML = `<span class="log-ts">${ts}</span><span class="log-tag ${cls}">${tag}</span><span class="log-body">${msg}</span>`;
+  s.appendChild(e);
+  s.scrollTop = s.scrollHeight;
+  logCount++;
+  document.getElementById('logCount').textContent = logCount + ' EVENTS';
+}
+
+// ── CHART
+let chart = null;
+let cDet=[], cFn=[], cFp=[], cLabels=['0'];
+
+function makeChart() {
+  if (chart) chart.destroy();
+  cDet=[0]; cFn=[0]; cFp=[0]; cLabels=['0'];
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: cLabels,
+      datasets: [
+        { label:'Caught', data:cDet, borderColor:'#20c8a0', backgroundColor:'rgba(32,200,160,0.06)', borderWidth:1.5, pointRadius:3, pointBackgroundColor:'#20c8a0', tension:0.35, fill:true },
+        { label:'Missed', data:cFn, borderColor:'#ff4a2a', backgroundColor:'rgba(255,74,42,0.04)', borderWidth:1.5, pointRadius:3, pointBackgroundColor:'#ff4a2a', tension:0.35, fill:false },
+        { label:'FP', data:cFp, borderColor:'#3a2800', borderDash:[4,3], backgroundColor:'transparent', borderWidth:1, pointRadius:2, pointBackgroundColor:'#4a3000', tension:0.35, fill:false }
+      ]
+    },
+    options: {
+      animation: { duration:250 },
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#0d0900', borderColor:'#2a1e00', borderWidth:1,
+          titleColor:'#ffcc44', bodyColor:'#e8a020',
+          titleFont:{ family:"'IBM Plex Mono'", size:10 },
+          bodyFont:{ family:"'IBM Plex Mono'", size:10 }
+        }
+      },
+      scales: {
+        x: { ticks:{color:'#4a3000',font:{family:"'IBM Plex Mono'",size:9}}, grid:{color:'rgba(60,40,0,0.3)'}, border:{color:'#1e1400'} },
+        y: { ticks:{color:'#4a3000',font:{family:"'IBM Plex Mono'",size:9}}, grid:{color:'rgba(60,40,0,0.2)'}, border:{color:'#1e1400'}, beginAtZero:true }
+      }
+    }
+  });
+  document.getElementById('idleMsg').style.display = 'none';
+  document.getElementById('lineChart').style.display = 'block';
+}
+
+function pushChart(r, det, fn, fp) {
+  cLabels.push(String(r));
+  cDet.push(det); cFn.push(fn); cFp.push(fp);
+  chart.data.labels = cLabels;
+  chart.data.datasets[0].data = cDet;
+  chart.data.datasets[1].data = cFn;
+  chart.data.datasets[2].data = cFp;
+  chart.update('none');
+}
+
+function setGrade(id, scoreStr) {
+  const el = document.getElementById(id);
+  const score = parseFloat(scoreStr);
+  if (score >= 0.8) { el.textContent='A'; el.className='grade ga'; }
+  else if (score >= 0.6) { el.textContent='B'; el.className='grade gb'; }
+  else if (score >= 0.4) { el.textContent='C'; el.className='grade gc'; }
+  else { el.textContent='F'; el.className='grade gf'; }
+}
+
+function flashNode(i, cls) {
+  const g = document.getElementById('hexGrid');
+  const nodes = g.querySelectorAll('.hex-node');
+  if (nodes[i]) { nodes[i].classList.remove('poisoned','detected'); nodes[i].classList.add(cls); }
+}
+
+// ── REAL TIME API INTEGRATION
+async function runEpisode() {
+  const numClients = parseInt(document.getElementById('numClients').value);
+  const numRounds = parseInt(document.getElementById('numRounds').value);
+  const diff = document.getElementById('difficulty').value;
+  const pArr = [...poisoned];
+
+  if (!pArr.length) { log('ERR','tag-sys','no poisoned nodes selected'); return; }
+
+  // Reset UI
+  document.getElementById('execBtn').disabled = true;
+  document.getElementById('tBody').innerHTML = '';
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('progLabel').textContent = 'INITIALISING...';
+  // Clear counts
+  ['s-round','s-det','s-fn','s-fp','h-round','h-det','h-fn'].forEach(id => document.getElementById(id).textContent = '0');
+  document.getElementById('s-acc').textContent = '—';
+  
+  document.getElementById('outcomeBanner').textContent = '── EPISODE RUNNING ──';
+  document.getElementById('outcomeBanner').className = 'outcome-banner';
+  document.getElementById('sbState').textContent = '● RUNNING';
+  document.getElementById('liveIndicator').classList.add('live');
+  document.getElementById('hdrStatus').textContent = 'ACTIVE';
+  document.getElementById('hdrStatus').style.color = 'var(--a)';
+
+  makeChart();
+  log('SYS','tag-sys',`episode start — ${numClients} nodes / ${numRounds} rounds / <span class="hl">${diff.toUpperCase()}</span>`);
+
+  try {
+    const response = await fetch('/api/run_episode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        poisoners: pArr, 
+        num_clients: numClients, 
+        num_rounds: numRounds, 
+        difficulty: diff 
+      })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      
+      for (const line of lines) {
+        if (!line.trim() || !line.startsWith('data: ')) continue;
+        const data = JSON.parse(line.replace('data: ', ''));
+
+        if (data.type === 'step') {
+          const { rn, atk_type, atkTgts, def_type, tp, fn, fp, acc, a_rew, d_rew, detRaw, fnRaw, fpRaw } = data;
+          
+          pushChart(rn, detRaw, fnRaw, fpRaw);
+          
+          // Update Hex Grid (visual representation of the round)
+          atkTgts.forEach(i => flashNode(i, 'poisoned'));
+          // (Backend doesn't specifically yield caught indices yet, we color based on TP count for now or improve API later)
+
+          // Update Stats
+          document.getElementById('s-round').textContent = String(rn).padStart(2,'0');
+          document.getElementById('s-det').textContent = detRaw;
+          document.getElementById('s-fn').textContent = fnRaw;
+          document.getElementById('s-fp').textContent = fpRaw;
+          document.getElementById('s-acc').textContent = (acc*100).toFixed(1)+'%';
+          document.getElementById('h-round').textContent = rn+'/'+numRounds;
+          document.getElementById('h-det').textContent = detRaw;
+          document.getElementById('h-fn').textContent = fnRaw;
+          document.getElementById('h-acc').textContent = (acc*100).toFixed(1)+'%';
+          document.getElementById('progFill').style.width = (rn/numRounds*100)+'%';
+          document.getElementById('progLabel').textContent = `ROUND ${rn} / ${numRounds}`;
+
+          // Log
+          log('ATK','tag-atk',`<span class="rl">${atk_type}</span> → [${atkTgts.join(', ')}]`);
+          log('DEF','tag-def',`<span class="tl">${def_type}</span> — tp:<span class="tl">${tp}</span> fn:<span class="rl">${fn}</span> fp:${fp}`);
+
+          // Add to Table
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="hi">${String(rn).padStart(2,'0')}</td>
+            <td><span class="pill-atk">${atk_type}</span></td>
+            <td class="d">[${atkTgts.join(',')}]</td>
+            <td><span class="pill-def">${def_type}</span></td>
+            <td class="${tp>0?'t':'d'}">${tp}</td>
+            <td class="${fn>0?'r':'d'}">${fn}</td>
+            <td class="d">${fp}</td>
+            <td>${(acc*100).toFixed(1)}%</td>
+            <td class="${parseFloat(a_rew)>0?'r':'d'}">${a_rew}</td>
+            <td class="${parseFloat(d_rew)>0?'t':'d'}">${d_rew}</td>
+          `;
+          document.getElementById('tBody').appendChild(tr);
+          document.querySelector('.table-panel').scrollTop = document.querySelector('.table-panel').scrollHeight;
+        } 
+        else if (data.type === 'done') {
+          const { precision, recall, f1, acc, graders } = data;
+          
+          document.getElementById('mPrec').textContent = precision.toFixed(1)+'%';
+          document.getElementById('mRec').textContent  = recall.toFixed(1)+'%';
+          document.getElementById('mF1').textContent   = f1.toFixed(1)+'%';
+          document.getElementById('mInteg').textContent = (acc*100).toFixed(1)+'%';
+
+          setGrade('g1', graders['Task 1 (Easy - Detection Recall)']);
+          setGrade('g2', graders['Task 2 (Medium - Pattern Precision)']);
+          setGrade('g3', graders['Task 3 (Hard - Adversarial Resilience & Speed)']);
+
+          const won = recall > 60;
+          const banner = document.getElementById('outcomeBanner');
+          banner.textContent = won ? '◈ DEFENDER WINS — THREAT CONTAINED' : '◈ ATTACKER WINS — MODEL COMPROMISED';
+          banner.className = 'outcome-banner ' + (won?'win':'lose');
+          
+          log('SYS','tag-evt', `EPISODE COMPLETE — ${won?'DEFENDER':'ATTACKER'} WINS`);
+        }
+      }
+    }
+  } catch (err) {
+    log('ERR','tag-sys', 'connection to server lost: ' + err);
+  }
+
+  document.getElementById('execBtn').disabled = false;
+  document.getElementById('progLabel').textContent = 'COMPLETE';
+  document.getElementById('liveIndicator').classList.remove('live');
+  document.getElementById('hdrStatus').textContent = 'IDLE';
+  document.getElementById('hdrStatus').style.color = 'var(--text-dim)';
+}
+</script>
+</body>
+</html>

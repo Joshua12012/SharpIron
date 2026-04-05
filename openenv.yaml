@@ -1,7 +1,9 @@
 spec_version: 1
-name: federated_RLAgent
+name: sharperner-rl
+title: "SharpernerRL: Adversarial Federated Learning"
+version: "1.0.0"
 type: space
 runtime: fastapi
-app: server.app:app
+app: server.main:app
 port: 8000
 

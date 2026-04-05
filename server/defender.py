@@ -90,6 +90,10 @@ CRITICAL: Pay close attention to the 'flagged_anomalies_for_defender' in the tel
 
         self.context_summary = "No previous rounds yet."
 
+    def reset(self):
+        """Reset agent memory for a fresh episode"""
+        self.context_summary = "No previous rounds yet."
+
     def act(self, observation: Dict[str, Any]) -> DefenderAction:
         # FIX: The weaker model is crashing out and dropping to the [0, 1] fallback 
         # because passing two 30-element arrays of floats overwhelms its context.
@@ -152,11 +156,12 @@ Return ONLY valid JSON:
 
         return action
 
-    def update_feedback(self, reward: float, reason: str, flagged_clients: list = None):
-        new_feedback = f"Reward={reward:.2f}, {reason}"
-        if flagged_clients:
-            new_feedback += f", Flagged: {flagged_clients}"
-
-        self.context_summary = new_feedback + " | " + self.context_summary[:150]
-        if len(self.context_summary) > 280:
-            self.context_summary = self.context_summary[:280] + "..."
+    def update_feedback(self, reward: float, reason: str, detections: int = 0, fps: int = 0, missed: int = 0):
+        """Compress feedback into a structured success/failure string to save tokens"""
+        # We ignore the verbose 'reason' string for context to stay lean
+        status = f"Caught:{detections}|FPs:{fps}|missed:{missed}|Rew:{reward:.1f}"
+        
+        self.context_summary = status + " | " + self.context_summary[:150]
+        
+        if len(self.context_summary) > 250:
+            self.context_summary = self.context_summary[:250] + "..."

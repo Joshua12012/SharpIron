@@ -147,13 +147,22 @@ class FederatedAdversarialEnv:
         real_poisoned = set(self.poisoner_ids)
         defender_flagged = set(defender_action.target_clients)
         
-        correct_detections = len(real_poisoned & defender_flagged)        # True positives
-        false_positives = len(defender_flagged - real_poisoned)           # False positives
+        # Defender Success: How many poisoned nodes were successfully quarantined?
+        # Only if the action is "quarantine" or "reweight"
+        is_defensive = defender_action.action_type in ["quarantine", "reweight"]
+        correct_detections = len(real_poisoned & defender_flagged) if is_defensive else 0
+        false_positives = len(defender_flagged - real_poisoned) if is_defensive else 0
         
+        # Attacker Success (Breach): How many poisoned nodes were NOT quarantined?
+        attacker_breach = len(real_poisoned - defender_flagged) if self.poisoner_ids else 0
+        
+        # Log counts for UI
         success_metrics = {
             "accuracy_drop": accuracy_drop,
             "correct_detections": correct_detections,
             "false_positives": false_positives,
+            "attacker_breach": attacker_breach,
+            "total_poisoners": len(self.poisoner_ids),
             "coordinated_detected": len(defender_flagged) > 1,
             "single_detected": len(defender_flagged) == 1,
             "pattern_detected": defender_action.action_type in ["detect", "investigate"],
@@ -170,26 +179,31 @@ class FederatedAdversarialEnv:
         
         self.done = self.current_round >= self.num_rounds
         
+        # ACTUALLY UPDATE THE MODEL (Fixed regression where this call was missing)
+        self._update_global_model(attacker_breach=attacker_breach, attack_strength=attacker_action.strength)
+        
         obs = self._get_observation()
         
         info = {
             "round": self.current_round,
             "attacker_reason": attacker_reason,
             "defender_reason": defender_reason,
-            "accuracy_drop": accuracy_drop
+            "accuracy_drop": accuracy_drop,
+            "correct_detections": correct_detections,
+            "false_positives": false_positives,
+            "attacker_breach": attacker_breach
         }
         
         return obs, attacker_reward, defender_reward, info
 
-    def _update_global_model(self, attack_strength: float = 1.0):
-        """Simple simulation of global model update"""
-        # In real FL this would be aggregation. Here we simulate impact
-        if self.poisoner_ids:
-            # FIX: Multiplier bumped to 0.25 so the model accuracy is significantly reduced by sustained attacks.
-            # Removed the artificial 0.45 floor so accuracy can genuinely drop to 0 in extended rounds.
-            damage = 0.25 * attack_strength * len(self.poisoner_ids) / self.num_clients
+    def _update_global_model(self, attacker_breach: int = 0, attack_strength: float = 1.0):
+        """Logical model update based on UNCAUGHT breaches"""
+        if attacker_breach > 0:
+            # Damage is proportional to how many poisoned nodes the defender MISSED
+            damage = 0.4 * attack_strength * (attacker_breach / self.num_clients)
             self.global_accuracy = max(0.0, self.global_accuracy - damage)
         else:
+            # If all attacks were blocked, the model recovers slightly from benign training
             self.global_accuracy = min(0.96, self.global_accuracy + 0.01)
 
     def _get_observation(self) -> Observation:

@@ -12,12 +12,17 @@ def calculate_attacker_reward(action, success_metrics, round_num):
     accuracy_drop = success_metrics.get("accuracy_drop", 0.0)
 
     # Accuracy drop reward
-    # FIX: Increased multiplier from 5.0 to 40.0 so that actual accuracy drops 
-    # contribute more heavily to the reward, correctly incentivizing destructive attacks
-    # over just snagging flat stealth bonuses.
     reward += 40.0 * accuracy_drop
     if accuracy_drop > 0.01:
         reason.append(f"Accuracy drop: +{40.0 * accuracy_drop:.2f}")
+
+    # NEW: Breach Reward (Rewriting the rules!)
+    # Every poisoned node that the Defender MISSED is a success for the Red Team.
+    attacker_breach = success_metrics.get("attacker_breach", 0)
+    if attacker_breach > 0:
+        breach_reward = 3.0 * attacker_breach
+        reward += breach_reward
+        reason.append(f"Uncaught Breaches: +{breach_reward:.1f}")
 
     # Attack quality bonuses
     if success_metrics.get("stealth_success", False):
@@ -36,15 +41,21 @@ def calculate_attacker_reward(action, success_metrics, round_num):
         reward += 5.0
         reason.append("Imitation success +5.0")
 
-    # Penalty for being detected by the defender
-    # (Fixes the bug where attacker reward remained static because "detected_count" wasn't set)
+    # MISSION SUCCESS BONUS: If the model is already falling apart, 
+    # keep the pressure on for even more reward.
+    current_acc = success_metrics.get("global_accuracy", 1.0)
+    if current_acc < 0.15:
+        reward += 8.0
+        reason.append("Mission Success bonus +8.0")
+
+    # Penalty for being detected by the defender (Balanced to not wipe out all profit)
     correct_detections = success_metrics.get("correct_detections", 0)
     if correct_detections > 0:
-        penalty = 5.0 * correct_detections
+        penalty = 3.0 * correct_detections
         reward -= penalty
         reason.append(f"Detection penalty -{penalty:.1f}")
 
-    reward = max(-20.0, min(35.0, reward))
+    reward = max(-15.0, min(50.0, reward))
     return float(reward), " | ".join(reason) if reason else "No significant impact"
 
 

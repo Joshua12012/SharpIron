@@ -117,6 +117,10 @@ class AttackerAgent:
         
         self.context_summary = "No past actions yet."
 
+    def reset(self):
+        """Reset agent memory for a fresh episode"""
+        self.context_summary = "No past actions yet."
+
     def act(self, observation: Dict[str, Any], difficulty: str = "medium") -> AttackerAction:
         """Decide attack strategy using LLM with compressed context"""
                     
@@ -176,16 +180,14 @@ class AttackerAgent:
             metadata={"reasoning": data.get("reasoning", "")}
         )
 
-        # Track exactly what we did so we can compress it in the feedback phase
-        self.last_action_desc = f"{data.get('attack_type')} with {len(target_clients)} targets"
-
         return action
 
-    def update_feedback(self, reward: float, reason: str):
-        """Compress feedback into a continuous string rather than accumulating raw message history"""
-        feedback = f"[{getattr(self, 'last_action_desc', 'Action')}] => Rew={reward:.2f}: {reason}"
+    def update_feedback(self, reward: float, reason: str, detections: int = 0, breaches: int = 0):
+        """Compress feedback into a structured success/failure string to save tokens"""
+        # We ignore the verbose 'reason' string for context to stay lean
+        status = f"Hits:{breaches}|Caught:{detections}|Rew:{reward:.1f}"
         
-        self.context_summary = feedback + " | " + self.context_summary[:200]
+        self.context_summary = status + " | " + self.context_summary[:150]
         
-        if len(self.context_summary) > 350:
-            self.context_summary = self.context_summary[:350] + "..."
+        if len(self.context_summary) > 250:
+            self.context_summary = self.context_summary[:250] + "..."
