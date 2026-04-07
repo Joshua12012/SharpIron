@@ -39,19 +39,20 @@ class FederatedAdversarialEnv:
         return self._get_observation()
 
     def _generate_client_updates(self, is_poisoned: bool = False, attack_strength: float = 1.0):
-        """Generate simulated client weight updates"""
+        """Generate simulated client weight updates with non-zero safety floor"""
         updates = []
         for i in range(self.num_clients):
-            # FIX: Previously, if is_poisoned was True, ALL 20 clients were receiving massive poisoned updates.
-            # Now, it correctly applies poisoned noise ONLY to the selected poisoner_ids,
-            # meaning the telemetry will actually highlight the correct clients instead of being random static.
             if is_poisoned and getattr(self, 'poisoner_ids', None) and i in self.poisoner_ids:
-                # Poisoned update - scaled and noisy
-                base = np.random.normal(0, 0.5, 10) * attack_strength
+                # Poisoned update - ensure it's never strictly zero
+                base = np.random.normal(0, 0.5, 10) * max(0.1, attack_strength)
+                # Add a tiny noise floor to prevent absolute zeros
+                base += np.random.normal(0, 0.001, 10)
                 updates.append(base.tolist())
             else:
-                # Benign update - small natural variation
+                # Benign update - standard noise
                 base = np.random.normal(0, 0.1, 10)
+                # Ensure no absolute zero vectors
+                if np.all(base == 0): base += 0.0001
                 updates.append(base.tolist())
         return updates
 
@@ -147,31 +148,29 @@ class FederatedAdversarialEnv:
         real_poisoned = set(self.poisoner_ids)
         defender_flagged = set(defender_action.target_clients)
         
-        # Defender Success: How many poisoned nodes were successfully quarantined?
-        # Only if the action is "quarantine" or "reweight"
-        is_defensive = defender_action.action_type in ["quarantine", "reweight"]
-        correct_detections = len(real_poisoned & defender_flagged) if is_defensive else 0
-        false_positives = len(defender_flagged - real_poisoned) if is_defensive else 0
+        # Defender Success: Any action targeting a node (detect/quarantine/etc) counts toward detection scores
+        targets_anything = defender_action.action_type in ["detect", "quarantine", "reweight", "investigate", "alert"]
+        correct_detections = len(real_poisoned & defender_flagged) if targets_anything else 0
+        false_positives = len(defender_flagged - real_poisoned) if targets_anything else 0
         
-        # Attacker Success (Breach): How many poisoned nodes were NOT quarantined?
+        # Attacker Success (Breach): How many poisoned nodes were NOT flagged by the defender?
         attacker_breach = len(real_poisoned - defender_flagged) if self.poisoner_ids else 0
         
-        # Log counts for UI
+        # Success metrics (Action-based, no accuracy dependency)
+        attack_mode = getattr(attacker_action, 'attack_type', 'coordinated')
+        
         success_metrics = {
             "accuracy_drop": accuracy_drop,
             "correct_detections": correct_detections,
             "false_positives": false_positives,
             "attacker_breach": attacker_breach,
             "total_poisoners": len(self.poisoner_ids),
-            "coordinated_detected": len(defender_flagged) > 1,
-            "single_detected": len(defender_flagged) == 1,
-            "pattern_detected": defender_action.action_type in ["detect", "investigate"],
             "detection_round": self.current_round,
-            "accuracy_maintained": accuracy_drop < 0.015,
-            "stealth_success": attacker_action.stealth_level > 0.7 and accuracy_drop > 0.01,
-            "coordinated_success": len(self.poisoner_ids) > 1 and accuracy_drop > 0.02,
-            "alie_success": len(self.poisoner_ids) > 0 and 0.01 < accuracy_drop < 0.04,
-            "imitation_success": getattr(attacker_action, 'attack_type', '') == "imitation"
+            "stealth_success": attack_mode == "stealth" and attacker_breach > 0,
+            "coordinated_success": attack_mode == "coordinated" and attacker_breach > 1,
+            "alie_success": attack_mode == "alie" and attacker_breach > 1,
+            "single_success": len(self.poisoner_ids) == 1 and attacker_breach == 1,
+            "imitation_success": attack_mode == "imitation"
         }
         
         attacker_reward, attacker_reason = calculate_attacker_reward(attacker_action, success_metrics, self.current_round)
@@ -243,11 +242,14 @@ class FederatedAdversarialEnv:
             "done": self.done
         }
     
-    def set_config(self, poison_list: list, num_rounds: int, difficulty: str = "medium"):
-        """Update environment configuration including difficulty level"""
+    def set_config(self, poison_list: list, num_rounds: int, num_clients: Optional[int] = None, difficulty: str = "medium"):
+        """Update environment configuration including difficulty level and client count"""
         self.num_rounds = int(num_rounds)
         self.difficulty = difficulty.lower()
         self.poisoner_ids = sorted(poison_list) if poison_list else []
+        
+        if num_clients is not None:
+            self.num_clients = int(num_clients)
         
         # Reset episode state
         self.current_round = 0

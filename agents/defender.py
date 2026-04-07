@@ -77,7 +77,7 @@ Blue Defender Agent - Compressed context, fast model only
 """
 
 from models import DefenderAction
-from local_llm import get_llm_response
+from inference import get_llm_response
 import json
 from typing import Dict, Any, List
 

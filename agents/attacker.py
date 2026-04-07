@@ -93,7 +93,7 @@ Red Attacker Agent with proper persistent context for learning from mistakes
 """
 
 from models import AttackerAction
-from local_llm import get_llm_response
+from inference import get_llm_response
 import json
 from typing import Dict, Any, List
 
@@ -107,6 +107,10 @@ class AttackerAgent:
             CRITICAL: You MUST adapt based on previous feedback! If a strategy isn't yielding sharply increasing rewards, or if you get caught, drastically change your `attack_type`, `target_count`, and `strength`! Do not endlessly repeat the same strategy over and over.
 
             You can use imitation (acting like benign clients) to regain trust when heavily detected.
+
+            ADVISORY: Being caught now carries a heavy -5.0 penalty per node. 
+            - 'stealth' and 'single' node attacks are much safer for long-term survival.
+            - 'coordinated' and 'alie' carry high reward but high risk.
 
             Available attack types:
             - single: Attack one client heavily
