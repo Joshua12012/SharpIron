@@ -14,7 +14,11 @@ from agents.attacker import AttackerAgent
 from agents.defender import DefenderAgent
 from graders import grader_summary
 
-app = FastAPI(title="SharpernerRL")
+app = FastAPI(
+    title="SharpernerRL",
+    docs_url="/web/docs",
+    openapi_url="/web/openapi.json"
+)
 
 # CORS for UI
 app.add_middleware(
@@ -279,6 +283,7 @@ async def get_state():
 async def health():
     return {"status": "healthy", "dashboard": "SharpernerRL Online"}
 
+@app.get("/web")
 @app.get("/")
 async def root():
     from fastapi.responses import FileResponse

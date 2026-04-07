@@ -66,7 +66,7 @@ CLEANUP_FILES=()
 cleanup() { rm -f "${CLEANUP_FILES[@]+"${CLEANUP_FILES[@]}"}"; }
 trap cleanup EXIT
 
-PING_URL="${1:-}"
+PING_URL="${1:-https://huggingface.co/spaces/josh500/Sharpener}"
 REPO_DIR="${2:-.}"
 
 if [ -z "$PING_URL" ]; then

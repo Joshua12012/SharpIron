@@ -4,6 +4,6 @@ title: "SharpernerRL: Adversarial Federated Learning"
 version: "1.0.0"
 type: space
 runtime: fastapi
-app: server.main:app
+app: server.app:app
 port: 8000
 
