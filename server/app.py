@@ -16,8 +16,9 @@ from graders import grader_summary
 
 app = FastAPI(
     title="SharpernerRL",
-    docs_url="/web/docs",
-    openapi_url="/web/openapi.json"
+    docs_url="/",
+    openapi_url="/openapi.json",
+    redirect_slashes=False
 )
 
 # CORS for UI
@@ -284,8 +285,7 @@ async def health():
     return {"status": "healthy", "dashboard": "SharpernerRL Online"}
 
 @app.get("/web")
-@app.get("/")
-async def root():
+async def dashboard():
     from fastapi.responses import FileResponse
     return FileResponse("server/static/index.html")
 

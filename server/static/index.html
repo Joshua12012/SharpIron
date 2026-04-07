@@ -1004,7 +1004,7 @@ async function runEpisode() {
   log('SYS','tag-sys',`episode start — ${numClients} nodes / ${numRounds} rounds / <span class="hl">${diff.toUpperCase()}</span>`);
 
   try {
-    const response = await fetch('api/run_episode', {
+    const response = await fetch('/api/run_episode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
