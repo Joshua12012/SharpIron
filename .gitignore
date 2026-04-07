@@ -6,3 +6,4 @@ server/__pycache__
 server/saved_models/
 server/test_model
 server/verify_simulation
+openenv_federated_RLAgent.egg-info/
