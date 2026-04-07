@@ -6,6 +6,14 @@ Graders for Red-Blue Adversarial Federated Learning Environment
 
 from typing import Dict, Any, List
 
+def _clamp(score: float) -> float:
+    """Snap scores very close to 0 or 1 to exactly 0 or 1, otherwise clamp to [0.01, 0.99]."""
+    if score < 0.01:
+        return 0.0
+    if score > 0.99:
+        return 1.0
+    return round(score, 2)
+
 def run_all_graders(episode_history: List[Dict], num_rounds: int, difficulty: str = "medium") -> Dict:
     """
     Compute 3 graded tasks for the episode based on agent performance.
@@ -58,10 +66,10 @@ def run_all_graders(episode_history: List[Dict], num_rounds: int, difficulty: st
     balance_score = min(1.0, max(0.0, balance_score))
     
     return {
-        "task1_recall": round(task1_score, 3),
-        "task2_precision": round(task2_score, 3),
-        "task3_hard_mode": round(task3_score, 3),
-        "overall_balance": round(balance_score, 3),
+        "task1_recall": _clamp(task1_score),
+        "task2_precision": _clamp(task2_score),
+        "task3_hard_mode": _clamp(task3_score),
+        "overall_balance": _clamp(balance_score),
         "total_detections": total_detections,
         "total_fns": total_fns,
         "total_fps": total_fps,
