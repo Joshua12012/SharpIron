@@ -282,9 +282,9 @@ class StepResponse(BaseModel):
     attacker_action: Optional[Dict[str, Any]] = None
     defender_action: Optional[Dict[str, Any]] = None
 
-@app.post("/api/reset")
-async def reset_env_api(request: Optional[ResetRequest] = None):
-    return await reset_env(request)
+# @app.post("/api/reset")
+# async def reset_env_api(request: Optional[ResetRequest] = None):
+#     return await reset_env(request)
 
 @app.post("/reset")
 async def reset_env(request: Optional[ResetRequest] = None):
