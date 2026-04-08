@@ -1,684 +1,1520 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>FL Simulation Arena — SharpernerRL</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<style>
-:root {
-  --bg0:#080b10; --bg1:#0d1117; --bg2:#131920; --bg3:#1a2230;
-  --border:rgba(255,255,255,0.07); --border-soft:rgba(255,255,255,0.04);
-  --text0:#e8edf5; --text1:#8a9ab5; --text2:#4a5568;
-  --atk:#e05555; --atk-dim:rgba(224,85,85,0.15); --atk-glow:rgba(224,85,85,0.06);
-  --def:#3d9eff; --def-dim:rgba(61,158,255,0.15); --def-glow:rgba(61,158,255,0.06);
-  --node-good:#3ecf8e; --accent:#a78bfa; --server:#c9a84c;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;background:var(--bg0);color:var(--text0);font-family:'Syne',sans-serif;overflow:hidden}
-body{display:flex;flex-direction:column}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FL Simulation Arena — SharpernerRL</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg0: #080b10;
+      --bg1: #0d1117;
+      --bg2: #131920;
+      --bg3: #1a2230;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-soft: rgba(255, 255, 255, 0.04);
+      --text0: #e8edf5;
+      --text1: #8a9ab5;
+      --text2: #4a5568;
+      --atk: #e05555;
+      --atk-dim: rgba(224, 85, 85, 0.15);
+      --atk-glow: rgba(224, 85, 85, 0.06);
+      --def: #3d9eff;
+      --def-dim: rgba(61, 158, 255, 0.15);
+      --def-glow: rgba(61, 158, 255, 0.06);
+      --node-good: #3ecf8e;
+      --accent: #a78bfa;
+      --server: #c9a84c;
+    }
 
-#topbar{display:flex;align-items:flex-end;gap:10px;padding:10px 16px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10;flex-wrap:wrap}
-.ctrl-group{display:flex;flex-direction:column;gap:3px}
-.ctrl-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--text2);text-transform:uppercase}
-.ctrl-input{background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text0);font-family:'DM Mono',monospace;font-size:12px;padding:6px 10px;outline:none;transition:border-color .2s;min-width:0}
-.ctrl-input:focus{border-color:rgba(255,255,255,.2)}
-.ctrl-select{background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text0);font-family:'DM Mono',monospace;font-size:12px;padding:6px 22px 6px 10px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a5568'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center}
-.btn{background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;padding:7px 14px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap}
-.btn:hover{background:var(--bg3);color:var(--text0);border-color:rgba(255,255,255,.15)}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.btn-reset{border-color:rgba(167,139,250,.3);color:var(--accent)}.btn-reset:hover{background:rgba(167,139,250,.1)}
-.btn-go{border-color:rgba(62,207,142,.3);color:var(--node-good)}.btn-go:hover{background:rgba(62,207,142,.08)}
-#round-bar{display:flex;align-items:center;gap:5px;padding:6px 0 4px}
-.round-pip{width:7px;height:7px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);transition:all .4s}
-.round-pip.done{background:var(--accent);border-color:var(--accent)}
-.round-pip.active{background:var(--accent);border-color:var(--accent);box-shadow:0 0 8px var(--accent);animation:pip-pulse 1.5s ease infinite}
-@keyframes pip-pulse{0%,100%{box-shadow:0 0 8px var(--accent)}50%{box-shadow:0 0 16px var(--accent)}}
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
 
-/* Error banner */
-#error-banner{display:none;background:rgba(224,85,85,.12);border:1px solid rgba(224,85,85,.3);border-radius:6px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--atk);margin-left:auto;max-width:380px;text-align:center}
-#error-banner.show{display:block}
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      background: var(--bg0);
+      color: var(--text0);
+      font-family: 'Syne', sans-serif;
+      overflow: hidden
+    }
 
-#main{display:grid;grid-template-columns:200px 1fr 200px;flex:1;overflow:hidden;position:relative}
+    body {
+      display: flex;
+      flex-direction: column
+    }
 
-/* ── PANELS ── */
-.agent-panel{display:flex;flex-direction:column;padding:14px;border-right:1px solid var(--border);overflow:hidden;position:relative;transition:background .6s}
-.agent-panel.right{border-right:none;border-left:1px solid var(--border)}
-.agent-panel.active-atk{background:var(--atk-glow)}
-.agent-panel.active-def{background:var(--def-glow)}
-.agent-panel.dimmed{opacity:.38;filter:saturate(.2)}
-.agent-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.agent-dot{width:7px;height:7px;border-radius:50%;transition:all .4s}
-.dot-atk{background:var(--atk);box-shadow:0 0 6px var(--atk)}
-.dot-def{background:var(--def);box-shadow:0 0 6px var(--def)}
-.agent-name{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
-.atk-color{color:var(--atk)}.def-color{color:var(--def)}
+    #topbar {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--bg1);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+      flex-wrap: wrap
+    }
 
-/* ── AVATAR ── */
-.avatar-zone{position:relative;height:114px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;flex-shrink:0}
-.agent-halo{position:absolute;width:96px;height:96px;border-radius:50%;opacity:0;transition:opacity .5s;pointer-events:none}
-.halo-atk{background:radial-gradient(circle,rgba(224,85,85,.38) 0%,transparent 70%)}
-.halo-def{background:radial-gradient(circle,rgba(61,158,255,.38) 0%,transparent 70%)}
-.active-atk .agent-halo,.active-def .agent-halo{opacity:1}
-.robot-svg{display:block;overflow:visible}
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
 
-.status-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:20px;margin-bottom:7px;display:inline-block;width:fit-content;transition:all .4s}
-.badge-w{background:var(--atk-dim);color:var(--atk);border:1px solid rgba(224,85,85,.3)}
-.badge-wd{background:var(--def-dim);color:var(--def);border:1px solid rgba(61,158,255,.3)}
-.badge-idle{background:var(--bg2);color:var(--text2);border:1px solid var(--border)}
+    .ctrl-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: .12em;
+      color: var(--text2);
+      text-transform: uppercase
+    }
 
-.log-box{background:var(--bg2);border:1px solid var(--border-soft);border-radius:6px;padding:8px;flex:1;overflow-y:auto;min-height:65px;max-height:105px;scrollbar-width:none}
-.log-box::-webkit-scrollbar{display:none}
-.log-line{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);line-height:1.8;animation:lfade .3s ease}
-.log-line.hi{color:var(--text1)}.log-line.ah{color:var(--atk)}.log-line.dh{color:var(--def)}
-@keyframes lfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+    .ctrl-input {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text0);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color .2s;
+      min-width: 0
+    }
 
-.score-section{margin-top:7px}
-.score-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
-.score-key{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)}
-.score-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;transition:all .4s}
-.va{color:var(--atk)}.vd{color:var(--def)}
-.sbar{height:3px;background:var(--border);border-radius:2px;margin-bottom:7px;overflow:hidden}
-.sbar-fill{height:100%;border-radius:2px;transition:width .8s cubic-bezier(.4,0,.2,1)}
-.fa{background:var(--atk)}.fd{background:var(--def)}
+    .ctrl-input:focus {
+      border-color: rgba(255, 255, 255, .2)
+    }
 
-/* ── ARENA ── */
-#arena{position:relative;display:flex;flex-direction:column;align-items:center;overflow:hidden}
-#particle-canvas{position:absolute;inset:0;pointer-events:none;z-index:3}
+    .ctrl-select {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text0);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      padding: 6px 22px 6px 10px;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a5568'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 7px center
+    }
 
-#server-node{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:5}
-.server-icon{width:46px;height:46px;background:var(--bg2);border:1px solid rgba(201,168,76,.22);border-radius:8px;display:flex;align-items:center;justify-content:center;transition:box-shadow .4s,border-color .4s}
-.server-icon.active{box-shadow:0 0 22px rgba(201,168,76,.32);border-color:rgba(201,168,76,.7)}
-.server-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--server);opacity:.8}
+    .btn {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text1);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .06em;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      white-space: nowrap
+    }
 
-#client-grid-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-42%)}
-#client-grid{display:grid;gap:8px}
-.client-node{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;transition:all .3s}
-.client-node.good{background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.35)}
-.client-node.bad{background:rgba(224,85,85,.12);border:1px solid rgba(224,85,85,.5);animation:nblink 1.1s ease infinite}
-.client-node.blocked{background:rgba(61,158,255,.1);border:1px solid rgba(61,158,255,.35);animation:none}
-@keyframes nblink{0%,100%{border-color:rgba(224,85,85,.4);background:rgba(224,85,85,.1)}50%{border-color:rgba(224,85,85,1);background:rgba(224,85,85,.28);box-shadow:0 0 8px rgba(224,85,85,.5)}}
-.node-dot{width:7px;height:7px;border-radius:50%;transition:all .3s}
-.good .node-dot{background:var(--node-good);box-shadow:0 0 4px var(--node-good)}
-.bad .node-dot{background:var(--atk)}
-.blocked .node-dot{background:var(--def)}
+    .btn:hover {
+      background: var(--bg3);
+      color: var(--text0);
+      border-color: rgba(255, 255, 255, .15)
+    }
 
-#packets-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4}
-.packet{position:absolute;border-radius:50%;width:5px;height:5px;animation:fup 1.3s ease-in forwards}
-.packet.clean{background:var(--node-good);box-shadow:0 0 5px var(--node-good)}
-.packet.poison{background:var(--atk);box-shadow:0 0 5px var(--atk)}
-@keyframes fup{0%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:.7}100%{opacity:0;transform:translateY(-110px) scale(.3)}}
+    .btn:disabled {
+      opacity: .4;
+      cursor: not-allowed
+    }
 
-#center-hud{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;width:240px;z-index:5}
-.hud-stat-row{display:flex;gap:8px;width:100%}
-.hud-stat{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;text-align:center;flex:1}
-.hud-stat-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--text0)}
-.hud-stat-key{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin-top:1px}
-.slider-row{display:flex;align-items:center;gap:8px;width:100%}
-.slider-row label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);white-space:nowrap}
-input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:var(--bg3);border-radius:2px;outline:none}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--text0);cursor:pointer}
-.slider-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--text1);min-width:22px;text-align:right}
+    .btn-reset {
+      border-color: rgba(167, 139, 250, .3);
+      color: var(--accent)
+    }
 
-#phase-banner{position:absolute;top:66px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text2);background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:3px 12px;white-space:nowrap;z-index:5;transition:color .4s,border-color .4s}
-#phase-banner.pa{color:var(--atk);border-color:rgba(224,85,85,.3)}
-#phase-banner.pd{color:var(--def);border-color:rgba(61,158,255,.3)}
-#phase-banner.pg{color:var(--server);border-color:rgba(201,168,76,.3)}
+    .btn-reset:hover {
+      background: rgba(167, 139, 250, .1)
+    }
 
-#round-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--text1);background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px 12px;z-index:6;display:flex;align-items:center;gap:8px}
-.rdot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+    .btn-go {
+      border-color: rgba(62, 207, 142, .3);
+      color: var(--node-good)
+    }
 
-/* Loading spinner overlay within arena */
-#loading-overlay{position:absolute;inset:0;background:rgba(8,11,16,.7);display:none;align-items:center;justify-content:center;z-index:20;backdrop-filter:blur(2px)}
-#loading-overlay.show{display:flex}
-.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+    .btn-go:hover {
+      background: rgba(62, 207, 142, .08)
+    }
 
-#start-overlay{position:absolute;inset:0;background:rgba(8,11,16,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;backdrop-filter:blur(4px);transition:opacity .5s}
-#start-overlay.hidden{opacity:0;pointer-events:none}
-.ov-title{font-size:18px;font-weight:600;letter-spacing:.04em;color:var(--text0)}
-.ov-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);text-align:center;max-width:280px;line-height:1.7}
-.btn-ov{background:var(--bg2);border:1px solid rgba(167,139,250,.4);border-radius:8px;color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;padding:10px 28px;cursor:pointer;transition:all .2s}
-.btn-ov:hover{background:rgba(167,139,250,.12);border-color:var(--accent)}
+    #round-bar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 0 4px
+    }
 
-#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text1);z-index:100;transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none}
-#toast.show{transform:translateX(-50%) translateY(0)}
+    .round-pip {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      transition: all .4s
+    }
 
-/* API key mode toggle */
-.key-row{display:flex;gap:6px;align-items:center}
-.model-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);padding:3px 8px;border:1px solid var(--border);border-radius:4px}
-</style>
+    .round-pip.done {
+      background: var(--accent);
+      border-color: var(--accent)
+    }
+
+    .round-pip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pip-pulse 1.5s ease infinite
+    }
+
+    @keyframes pip-pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 8px var(--accent)
+      }
+
+      50% {
+        box-shadow: 0 0 16px var(--accent)
+      }
+    }
+
+    /* Error banner */
+    #error-banner {
+      display: none;
+      background: rgba(224, 85, 85, .12);
+      border: 1px solid rgba(224, 85, 85, .3);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--atk);
+      margin-left: auto;
+      max-width: 380px;
+      text-align: center
+    }
+
+    #error-banner.show {
+      display: block
+    }
+
+    #main {
+      display: grid;
+      grid-template-columns: 200px 1fr 200px;
+      flex: 1;
+      overflow: hidden;
+      position: relative
+    }
+
+    /* ── PANELS ── */
+    .agent-panel {
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      position: relative;
+      transition: background .6s
+    }
+
+    .agent-panel.right {
+      border-right: none;
+      border-left: 1px solid var(--border)
+    }
+
+    .agent-panel.active-atk {
+      background: var(--atk-glow)
+    }
+
+    .agent-panel.active-def {
+      background: var(--def-glow)
+    }
+
+    .agent-panel.dimmed {
+      opacity: .38;
+      filter: saturate(.2)
+    }
+
+    .agent-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px
+    }
+
+    .agent-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      transition: all .4s
+    }
+
+    .dot-atk {
+      background: var(--atk);
+      box-shadow: 0 0 6px var(--atk)
+    }
+
+    .dot-def {
+      background: var(--def);
+      box-shadow: 0 0 6px var(--def)
+    }
+
+    .agent-name {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase
+    }
+
+    .atk-color {
+      color: var(--atk)
+    }
+
+    .def-color {
+      color: var(--def)
+    }
+
+    /* ── AVATAR ── */
+    .avatar-zone {
+      position: relative;
+      height: 114px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+      flex-shrink: 0
+    }
+
+    .agent-halo {
+      position: absolute;
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity .5s;
+      pointer-events: none
+    }
+
+    .halo-atk {
+      background: radial-gradient(circle, rgba(224, 85, 85, .38) 0%, transparent 70%)
+    }
+
+    .halo-def {
+      background: radial-gradient(circle, rgba(61, 158, 255, .38) 0%, transparent 70%)
+    }
+
+    .active-atk .agent-halo,
+    .active-def .agent-halo {
+      opacity: 1
+    }
+
+    .robot-svg {
+      display: block;
+      overflow: visible
+    }
+
+    .status-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-bottom: 7px;
+      display: inline-block;
+      width: fit-content;
+      transition: all .4s
+    }
+
+    .badge-w {
+      background: var(--atk-dim);
+      color: var(--atk);
+      border: 1px solid rgba(224, 85, 85, .3)
+    }
+
+    .badge-wd {
+      background: var(--def-dim);
+      color: var(--def);
+      border: 1px solid rgba(61, 158, 255, .3)
+    }
+
+    .badge-idle {
+      background: var(--bg2);
+      color: var(--text2);
+      border: 1px solid var(--border)
+    }
+
+    .log-box {
+      background: var(--bg2);
+      border: 1px solid var(--border-soft);
+      border-radius: 6px;
+      padding: 8px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 65px;
+      max-height: 105px;
+      scrollbar-width: none
+    }
+
+    .log-box::-webkit-scrollbar {
+      display: none
+    }
+
+    .log-line {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text2);
+      line-height: 1.8;
+      animation: lfade .3s ease
+    }
+
+    .log-line.hi {
+      color: var(--text1)
+    }
+
+    .log-line.ah {
+      color: var(--atk)
+    }
+
+    .log-line.dh {
+      color: var(--def)
+    }
+
+    @keyframes lfade {
+      from {
+        opacity: 0;
+        transform: translateY(4px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .score-section {
+      margin-top: 7px
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3px
+    }
+
+    .score-key {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text2)
+    }
+
+    .score-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all .4s
+    }
+
+    .va {
+      color: var(--atk)
+    }
+
+    .vd {
+      color: var(--def)
+    }
+
+    .sbar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-bottom: 7px;
+      overflow: hidden
+    }
+
+    .sbar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width .8s cubic-bezier(.4, 0, .2, 1)
+    }
+
+    .fa {
+      background: var(--atk)
+    }
+
+    .fd {
+      background: var(--def)
+    }
+
+    /* ── ARENA ── */
+    #arena {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden
+    }
+
+    #particle-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3
+    }
+
+    #server-node {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      z-index: 5
+    }
+
+    .server-icon {
+      width: 46px;
+      height: 46px;
+      background: var(--bg2);
+      border: 1px solid rgba(201, 168, 76, .22);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: box-shadow .4s, border-color .4s
+    }
+
+    .server-icon.active {
+      box-shadow: 0 0 22px rgba(201, 168, 76, .32);
+      border-color: rgba(201, 168, 76, .7)
+    }
+
+    .server-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--server);
+      opacity: .8
+    }
+
+    #client-grid-wrap {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -42%)
+    }
+
+    #client-grid {
+      display: grid;
+      gap: 8px
+    }
+
+    .client-node {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      transition: all .3s
+    }
+
+    .client-node.good {
+      background: rgba(62, 207, 142, .1);
+      border: 1px solid rgba(62, 207, 142, .35)
+    }
+
+    .client-node.bad {
+      background: rgba(224, 85, 85, .12);
+      border: 1px solid rgba(224, 85, 85, .5);
+      animation: nblink 1.1s ease infinite
+    }
+
+    .client-node.blocked {
+      background: rgba(61, 158, 255, .1);
+      border: 1px solid rgba(61, 158, 255, .35);
+      animation: none
+    }
+
+    @keyframes nblink {
+
+      0%,
+      100% {
+        border-color: rgba(224, 85, 85, .4);
+        background: rgba(224, 85, 85, .1)
+      }
+
+      50% {
+        border-color: rgba(224, 85, 85, 1);
+        background: rgba(224, 85, 85, .28);
+        box-shadow: 0 0 8px rgba(224, 85, 85, .5)
+      }
+    }
+
+    .node-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      transition: all .3s
+    }
+
+    .good .node-dot {
+      background: var(--node-good);
+      box-shadow: 0 0 4px var(--node-good)
+    }
+
+    .bad .node-dot {
+      background: var(--atk)
+    }
+
+    .blocked .node-dot {
+      background: var(--def)
+    }
+
+    #packets-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 4
+    }
+
+    .packet {
+      position: absolute;
+      border-radius: 50%;
+      width: 5px;
+      height: 5px;
+      animation: fup 1.3s ease-in forwards
+    }
+
+    .packet.clean {
+      background: var(--node-good);
+      box-shadow: 0 0 5px var(--node-good)
+    }
+
+    .packet.poison {
+      background: var(--atk);
+      box-shadow: 0 0 5px var(--atk)
+    }
+
+    @keyframes fup {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1)
+      }
+
+      80% {
+        opacity: .7
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(-110px) scale(.3)
+      }
+    }
+
+    #center-hud {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      width: 240px;
+      z-index: 5
+    }
+
+    .hud-stat-row {
+      display: flex;
+      gap: 8px;
+      width: 100%
+    }
+
+    .hud-stat {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      text-align: center;
+      flex: 1
+    }
+
+    .hud-stat-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text0)
+    }
+
+    .hud-stat-key {
+      font-family: 'DM Mono', monospace;
+      font-size: 8px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-top: 1px
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%
+    }
+
+    .slider-row label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text2);
+      white-space: nowrap
+    }
+
+    input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      background: var(--bg3);
+      border-radius: 2px;
+      outline: none
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--text0);
+      cursor: pointer
+    }
+
+    .slider-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text1);
+      min-width: 22px;
+      text-align: right
+    }
+
+    #phase-banner {
+      position: absolute;
+      top: 66px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--text2);
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 12px;
+      white-space: nowrap;
+      z-index: 5;
+      transition: color .4s, border-color .4s
+    }
+
+    #phase-banner.pa {
+      color: var(--atk);
+      border-color: rgba(224, 85, 85, .3)
+    }
+
+    #phase-banner.pd {
+      color: var(--def);
+      border-color: rgba(61, 158, 255, .3)
+    }
+
+    #phase-banner.pg {
+      color: var(--server);
+      border-color: rgba(201, 168, 76, .3)
+    }
+
+    #round-badge {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .06em;
+      color: var(--text1);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 12px;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .rdot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent)
+    }
+
+    /* Loading spinner overlay within arena */
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 11, 16, .7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      backdrop-filter: blur(2px)
+    }
+
+    #loading-overlay.show {
+      display: flex
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    #start-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 11, 16, .88);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      z-index: 20;
+      backdrop-filter: blur(4px);
+      transition: opacity .5s
+    }
+
+    #start-overlay.hidden {
+      opacity: 0;
+      pointer-events: none
+    }
+
+    .ov-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--text0)
+    }
+
+    .ov-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.7
+    }
+
+    .btn-ov {
+      background: var(--bg2);
+      border: 1px solid rgba(167, 139, 250, .4);
+      border-radius: 8px;
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: .08em;
+      padding: 10px 28px;
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .btn-ov:hover {
+      background: rgba(167, 139, 250, .12);
+      border-color: var(--accent)
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text1);
+      z-index: 100;
+      transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+      pointer-events: none
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0)
+    }
+
+    /* API key mode toggle */
+    .key-row {
+      display: flex;
+      gap: 6px;
+      align-items: center
+    }
+
+    .model-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text2);
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px
+    }
+  </style>
 </head>
+
 <body>
 
-<div id="topbar">
-  <div class="ctrl-group" style="flex:1;max-width:320px">
-    <span class="ctrl-label">Groq API Key (runs real LLM agents)</span>
-    <div class="key-row">
-      <input id="api-key-input" class="ctrl-input" type="password" placeholder="gsk_••••••••••••••••••••" style="flex:1" autocomplete="off"/>
-      <button class="btn" onclick="toggleKey()" title="Show/hide key">⊙</button>
+  <div id="topbar">
+    <div class="ctrl-group" style="flex:1;max-width:320px">
+      <span class="ctrl-label">Groq API Key (runs real LLM agents)</span>
+      <div class="key-row">
+        <input id="api-key-input" class="ctrl-input" type="password" placeholder="gsk_••••••••••••••••••••"
+          style="flex:1" autocomplete="off" />
+        <button class="btn" onclick="toggleKey()" title="Show/hide key">⊙</button>
+      </div>
     </div>
-  </div>
-  <div class="ctrl-group">
-    <span class="ctrl-label">Model</span>
-    <select class="ctrl-select" id="model-select" style="width:170px">
-      <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
-      <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
-      <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
-    </select>
-  </div>
-  <div class="ctrl-group">
-    <span class="ctrl-label">Difficulty</span>
-    <select class="ctrl-select" id="difficulty-select" style="width:106px">
-      <option value="easy">Easy</option><option value="medium" selected>Medium</option>
-      <option value="hard">Hard</option><option value="extreme">Extreme</option>
-    </select>
-  </div>
-  <div class="ctrl-group">
-    <span class="ctrl-label">Rounds</span>
-    <select class="ctrl-select" id="rounds-select" style="width:68px">
-      <option>5</option><option selected>10</option><option>15</option><option>20</option>
-    </select>
-  </div>
-  <div class="ctrl-group">
-    <span class="ctrl-label">Progress</span>
-    <div id="round-bar"></div>
-  </div>
-  <div id="error-banner"></div>
-  <div style="display:flex;gap:6px;align-items:flex-end;padding-bottom:1px;margin-left:auto">
-    <button class="btn btn-go" id="start-btn" onclick="startSimulation()">▶ Start</button>
-    <button class="btn btn-reset" onclick="resetAll()">↺ Reset</button>
-  </div>
-</div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Model</span>
+      <select class="ctrl-select" id="model-select" style="width:170px">
+        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+        <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Difficulty</span>
+      <select class="ctrl-select" id="difficulty-select" style="width:106px">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+        <option value="extreme">Extreme</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Rounds</span>
+      <select class="ctrl-select" id="rounds-select" style="width:68px">
+        <option>5</option>
+        <option selected>10</option>
+        <option>15</option>
+        <option>20</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Progress</span>
+      <div id="round-bar"></div>
+    </div>
 
-<div id="main">
-
-  <!-- ATTACK AGENT LEFT -->
-  <div class="agent-panel dimmed" id="atk-panel">
-    <div class="agent-header">
-      <div class="agent-dot dot-atk"></div>
-      <span class="agent-name atk-color">Attack Agent</span>
-    </div>
-    <div class="avatar-zone">
-      <div class="agent-halo halo-atk"></div>
-      <svg class="robot-svg" width="80" height="108" viewBox="0 0 80 108">
-        <line x1="40" y1="5" x2="40" y2="16" stroke="#e05555" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>
-        <circle cx="40" cy="4" r="3.5" fill="#e05555" id="ak-ant" opacity=".5"/>
-        <g id="ak-head" style="transform-origin:40px 31px;transition:transform .65s cubic-bezier(.4,0,.2,1)">
-          <rect x="18" y="15" width="44" height="34" rx="8" fill="#130b0b" stroke="#e05555" stroke-width="1.1" opacity=".9"/>
-          <rect x="23" y="23" width="34" height="11" rx="3" fill="#1e0808" stroke="rgba(224,85,85,.25)" stroke-width=".5"/>
-          <ellipse cx="31" cy="28.5" rx="5" ry="5" fill="#e05555" id="ak-eya" opacity=".08"/>
-          <ellipse cx="49" cy="28.5" rx="5" ry="5" fill="#e05555" id="ak-eyb" opacity=".08"/>
-          <circle cx="31" cy="28.5" r="2.5" fill="#e05555" id="ak-pa" opacity=".2"/>
-          <circle cx="49" cy="28.5" r="2.5" fill="#e05555" id="ak-pb" opacity=".2"/>
-          <path d="M25 22 L37 22" stroke="rgba(224,85,85,.2)" stroke-width=".8" stroke-linecap="round"/>
-          <path d="M43 22 L55 22" stroke="rgba(224,85,85,.2)" stroke-width=".8" stroke-linecap="round"/>
-          <path d="M28 40 Q40 44.5 52 40" fill="none" stroke="rgba(224,85,85,.25)" stroke-width="1" stroke-linecap="round"/>
-          <rect x="11" y="22" width="7" height="9" rx="2.5" fill="#130b0b" stroke="#e05555" stroke-width=".8" opacity=".7"/>
-          <rect x="62" y="22" width="7" height="9" rx="2.5" fill="#130b0b" stroke="#e05555" stroke-width=".8" opacity=".7"/>
-        </g>
-        <rect x="34" y="49" width="12" height="7" rx="2" fill="#0e0808" stroke="rgba(224,85,85,.2)" stroke-width=".8"/>
-        <rect x="12" y="56" width="56" height="38" rx="9" fill="#120808" stroke="#e05555" stroke-width="1" opacity=".85"/>
-        <rect x="21" y="63" width="38" height="22" rx="4" fill="#1c0808" stroke="rgba(224,85,85,.18)" stroke-width=".5"/>
-        <circle cx="31" cy="72" r="3.5" fill="#e05555" id="ak-c1" opacity=".15"/>
-        <circle cx="40" cy="72" r="3.5" fill="#e05555" id="ak-c2" opacity=".15"/>
-        <circle cx="49" cy="72" r="3.5" fill="#e05555" id="ak-c3" opacity=".15"/>
-        <rect x="28" y="79" width="24" height="2" rx="1" fill="rgba(224,85,85,.12)"/>
-        <rect x="3" y="58" width="9" height="26" rx="4" fill="#120808" stroke="rgba(224,85,85,.28)" stroke-width=".8"/>
-        <rect x="68" y="58" width="9" height="26" rx="4" fill="#120808" stroke="rgba(224,85,85,.28)" stroke-width=".8"/>
-        <rect x="19" y="93" width="15" height="13" rx="4" fill="#120808" stroke="rgba(224,85,85,.22)" stroke-width=".8"/>
-        <rect x="46" y="93" width="15" height="13" rx="4" fill="#120808" stroke="rgba(224,85,85,.22)" stroke-width=".8"/>
-      </svg>
-    </div>
-    <div class="status-badge badge-idle" id="atk-badge">Standby</div>
-    <div class="log-box" id="atk-log"><div class="log-line">Awaiting simulation…</div></div>
-    <div class="score-section">
-      <div class="score-row"><span class="score-key">Atk Reward</span><span class="score-val va" id="atk-dmg">0.00</span></div>
-      <div class="sbar"><div class="sbar-fill fa" id="atk-dmg-bar" style="width:0%"></div></div>
-      <div class="score-row"><span class="score-key">Nodes Breached</span><span class="score-val va" id="atk-comp">0</span></div>
-      <div class="sbar"><div class="sbar-fill fa" id="atk-comp-bar" style="width:0%"></div></div>
-      <div class="score-row"><span class="score-key">Rounds Won</span><span class="score-val va" id="atk-wins">0</span></div>
+    <!-- NewZDocs Button -->
+    <button class="btn btn-docs" onclick="window.open('/docs', '_blank')" style="margin-left:auto; margin-bottom:2px;">
+      📘 API Docs (Swagger)
+    </button>
+    <div id="error-banner"></div>
+    <div style="display:flex;gap:6px;align-items:flex-end;padding-bottom:1px;margin-left:auto">
+      <button class="btn btn-go" id="start-btn" onclick="startSimulation()">▶ Start</button>
+      <button class="btn btn-reset" onclick="resetAll()">↺ Reset</button>
     </div>
   </div>
 
-  <!-- CENTER ARENA -->
-  <div id="arena">
-    <canvas id="particle-canvas"></canvas>
-    <div id="round-badge"><div class="rdot"></div><span id="round-label">Round — / —</span></div>
-    <div id="server-node">
-      <div class="server-icon" id="server-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <rect x="2" y="3" width="20" height="6" rx="2" stroke="#c9a84c" stroke-width="1.1"/>
-          <rect x="2" y="11" width="20" height="6" rx="2" stroke="#c9a84c" stroke-width="1.1"/>
-          <circle cx="18" cy="6" r="1.2" fill="#c9a84c"/><circle cx="18" cy="14" r="1.2" fill="#c9a84c"/>
-          <path d="M12 20v-3M9 20h6" stroke="#c9a84c" stroke-width="1.1" stroke-linecap="round"/>
+  <div id="main">
+
+    <!-- ATTACK AGENT LEFT -->
+    <div class="agent-panel dimmed" id="atk-panel">
+      <div class="agent-header">
+        <div class="agent-dot dot-atk"></div>
+        <span class="agent-name atk-color">Attack Agent</span>
+      </div>
+      <div class="avatar-zone">
+        <div class="agent-halo halo-atk"></div>
+        <svg class="robot-svg" width="80" height="108" viewBox="0 0 80 108">
+          <line x1="40" y1="5" x2="40" y2="16" stroke="#e05555" stroke-width="1.5" stroke-linecap="round"
+            opacity=".6" />
+          <circle cx="40" cy="4" r="3.5" fill="#e05555" id="ak-ant" opacity=".5" />
+          <g id="ak-head" style="transform-origin:40px 31px;transition:transform .65s cubic-bezier(.4,0,.2,1)">
+            <rect x="18" y="15" width="44" height="34" rx="8" fill="#130b0b" stroke="#e05555" stroke-width="1.1"
+              opacity=".9" />
+            <rect x="23" y="23" width="34" height="11" rx="3" fill="#1e0808" stroke="rgba(224,85,85,.25)"
+              stroke-width=".5" />
+            <ellipse cx="31" cy="28.5" rx="5" ry="5" fill="#e05555" id="ak-eya" opacity=".08" />
+            <ellipse cx="49" cy="28.5" rx="5" ry="5" fill="#e05555" id="ak-eyb" opacity=".08" />
+            <circle cx="31" cy="28.5" r="2.5" fill="#e05555" id="ak-pa" opacity=".2" />
+            <circle cx="49" cy="28.5" r="2.5" fill="#e05555" id="ak-pb" opacity=".2" />
+            <path d="M25 22 L37 22" stroke="rgba(224,85,85,.2)" stroke-width=".8" stroke-linecap="round" />
+            <path d="M43 22 L55 22" stroke="rgba(224,85,85,.2)" stroke-width=".8" stroke-linecap="round" />
+            <path d="M28 40 Q40 44.5 52 40" fill="none" stroke="rgba(224,85,85,.25)" stroke-width="1"
+              stroke-linecap="round" />
+            <rect x="11" y="22" width="7" height="9" rx="2.5" fill="#130b0b" stroke="#e05555" stroke-width=".8"
+              opacity=".7" />
+            <rect x="62" y="22" width="7" height="9" rx="2.5" fill="#130b0b" stroke="#e05555" stroke-width=".8"
+              opacity=".7" />
+          </g>
+          <rect x="34" y="49" width="12" height="7" rx="2" fill="#0e0808" stroke="rgba(224,85,85,.2)"
+            stroke-width=".8" />
+          <rect x="12" y="56" width="56" height="38" rx="9" fill="#120808" stroke="#e05555" stroke-width="1"
+            opacity=".85" />
+          <rect x="21" y="63" width="38" height="22" rx="4" fill="#1c0808" stroke="rgba(224,85,85,.18)"
+            stroke-width=".5" />
+          <circle cx="31" cy="72" r="3.5" fill="#e05555" id="ak-c1" opacity=".15" />
+          <circle cx="40" cy="72" r="3.5" fill="#e05555" id="ak-c2" opacity=".15" />
+          <circle cx="49" cy="72" r="3.5" fill="#e05555" id="ak-c3" opacity=".15" />
+          <rect x="28" y="79" width="24" height="2" rx="1" fill="rgba(224,85,85,.12)" />
+          <rect x="3" y="58" width="9" height="26" rx="4" fill="#120808" stroke="rgba(224,85,85,.28)"
+            stroke-width=".8" />
+          <rect x="68" y="58" width="9" height="26" rx="4" fill="#120808" stroke="rgba(224,85,85,.28)"
+            stroke-width=".8" />
+          <rect x="19" y="93" width="15" height="13" rx="4" fill="#120808" stroke="rgba(224,85,85,.22)"
+            stroke-width=".8" />
+          <rect x="46" y="93" width="15" height="13" rx="4" fill="#120808" stroke="rgba(224,85,85,.22)"
+            stroke-width=".8" />
         </svg>
       </div>
-      <span class="server-label">FL Server</span>
-    </div>
-    <div id="phase-banner">Idle</div>
-    <div id="client-grid-wrap"><div id="client-grid"></div></div>
-    <div id="packets-layer"></div>
-    <div id="center-hud">
-      <div class="hud-stat-row">
-        <div class="hud-stat"><div class="hud-stat-val" id="hud-poisoned">0</div><div class="hud-stat-key">Poisoned</div></div>
-        <div class="hud-stat"><div class="hud-stat-val" id="hud-acc">0.85</div><div class="hud-stat-key">Accuracy</div></div>
-        <div class="hud-stat"><div class="hud-stat-val" id="hud-blocked">0</div><div class="hud-stat-key">Blocked</div></div>
+      <div class="status-badge badge-idle" id="atk-badge">Standby</div>
+      <div class="log-box" id="atk-log">
+        <div class="log-line">Awaiting simulation…</div>
       </div>
-      <div class="slider-row">
-        <label>Clients</label>
-        <input type="range" id="client-slider" min="4" max="25" value="12" step="1" oninput="updateClientCount(this.value)"/>
-        <span class="slider-val" id="client-count-label">12</span>
+      <div class="score-section">
+        <div class="score-row"><span class="score-key">Atk Reward</span><span class="score-val va"
+            id="atk-dmg">0.00</span></div>
+        <div class="sbar">
+          <div class="sbar-fill fa" id="atk-dmg-bar" style="width:0%"></div>
+        </div>
+        <div class="score-row"><span class="score-key">Nodes Breached</span><span class="score-val va"
+            id="atk-comp">0</span></div>
+        <div class="sbar">
+          <div class="sbar-fill fa" id="atk-comp-bar" style="width:0%"></div>
+        </div>
+        <div class="score-row"><span class="score-key">Rounds Won</span><span class="score-val va"
+            id="atk-wins">0</span></div>
       </div>
     </div>
-    <div id="loading-overlay"><div class="spinner"></div></div>
-    <div id="start-overlay">
-      <div class="ov-title">FL Simulation Arena</div>
-      <div class="ov-sub">Paste your Groq API key above, configure settings, then start.<br><br>The simulation runs real LLM agents against your backend environment — every round is a genuine adversarial step.</div>
-      <button class="btn-ov" onclick="startSimulation()">Begin Simulation</button>
+
+    <!-- CENTER ARENA -->
+    <div id="arena">
+      <canvas id="particle-canvas"></canvas>
+      <div id="round-badge">
+        <div class="rdot"></div><span id="round-label">Round — / —</span>
+      </div>
+      <div id="server-node">
+        <div class="server-icon" id="server-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="2" y="3" width="20" height="6" rx="2" stroke="#c9a84c" stroke-width="1.1" />
+            <rect x="2" y="11" width="20" height="6" rx="2" stroke="#c9a84c" stroke-width="1.1" />
+            <circle cx="18" cy="6" r="1.2" fill="#c9a84c" />
+            <circle cx="18" cy="14" r="1.2" fill="#c9a84c" />
+            <path d="M12 20v-3M9 20h6" stroke="#c9a84c" stroke-width="1.1" stroke-linecap="round" />
+          </svg>
+        </div>
+        <span class="server-label">FL Server</span>
+      </div>
+      <div id="phase-banner">Idle</div>
+      <div id="client-grid-wrap">
+        <div id="client-grid"></div>
+      </div>
+      <div id="packets-layer"></div>
+      <div id="center-hud">
+        <div class="hud-stat-row">
+          <div class="hud-stat">
+            <div class="hud-stat-val" id="hud-poisoned">0</div>
+            <div class="hud-stat-key">Poisoned</div>
+          </div>
+          <div class="hud-stat">
+            <div class="hud-stat-val" id="hud-acc">0.85</div>
+            <div class="hud-stat-key">Accuracy</div>
+          </div>
+          <div class="hud-stat">
+            <div class="hud-stat-val" id="hud-blocked">0</div>
+            <div class="hud-stat-key">Blocked</div>
+          </div>
+        </div>
+        <div class="slider-row">
+          <label>Clients</label>
+          <input type="range" id="client-slider" min="4" max="25" value="12" step="1"
+            oninput="updateClientCount(this.value)" />
+          <span class="slider-val" id="client-count-label">12</span>
+        </div>
+      </div>
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+      </div>
+      <div id="start-overlay">
+        <div class="ov-title">FL Simulation Arena</div>
+        <div class="ov-sub">Paste your Groq API key above, configure settings, then start.<br><br>The simulation runs
+          real LLM agents against your backend environment — every round is a genuine adversarial step.</div>
+        <button class="btn-ov" onclick="startSimulation()">Begin Simulation</button>
+      </div>
+    </div>
+
+    <!-- DEFENSE AGENT RIGHT -->
+    <div class="agent-panel right dimmed" id="def-panel">
+      <div class="agent-header">
+        <div class="agent-dot dot-def"></div>
+        <span class="agent-name def-color">Detection Agent</span>
+      </div>
+      <div class="avatar-zone">
+        <div class="agent-halo halo-def"></div>
+        <svg class="robot-svg" width="80" height="108" viewBox="0 0 80 108">
+          <line x1="40" y1="5" x2="40" y2="16" stroke="#3d9eff" stroke-width="1.5" stroke-linecap="round"
+            opacity=".6" />
+          <circle cx="40" cy="4" r="3.5" fill="#3d9eff" id="dk-ant" opacity=".5" />
+          <g id="dk-head" style="transform-origin:40px 31px;transition:transform .65s cubic-bezier(.4,0,.2,1)">
+            <rect x="18" y="15" width="44" height="34" rx="8" fill="#090f1c" stroke="#3d9eff" stroke-width="1.1"
+              opacity=".9" />
+            <rect x="23" y="23" width="34" height="11" rx="3" fill="#06101e" stroke="rgba(61,158,255,.25)"
+              stroke-width=".5" />
+            <ellipse cx="31" cy="28.5" rx="5" ry="5" fill="#3d9eff" id="dk-eya" opacity=".08" />
+            <ellipse cx="49" cy="28.5" rx="5" ry="5" fill="#3d9eff" id="dk-eyb" opacity=".08" />
+            <circle cx="31" cy="28.5" r="2.5" fill="#3d9eff" id="dk-pa" opacity=".2" />
+            <circle cx="49" cy="28.5" r="2.5" fill="#3d9eff" id="dk-pb" opacity=".2" />
+            <path d="M25 22 L37 22" stroke="rgba(61,158,255,.2)" stroke-width=".8" stroke-linecap="round" />
+            <path d="M43 22 L55 22" stroke="rgba(61,158,255,.2)" stroke-width=".8" stroke-linecap="round" />
+            <path d="M28 40 Q40 36 52 40" fill="none" stroke="rgba(61,158,255,.3)" stroke-width="1"
+              stroke-linecap="round" />
+            <rect x="11" y="22" width="7" height="9" rx="2.5" fill="#090f1c" stroke="#3d9eff" stroke-width=".8"
+              opacity=".7" />
+            <rect x="62" y="22" width="7" height="9" rx="2.5" fill="#090f1c" stroke="#3d9eff" stroke-width=".8"
+              opacity=".7" />
+          </g>
+          <rect x="34" y="49" width="12" height="7" rx="2" fill="#060d1a" stroke="rgba(61,158,255,.2)"
+            stroke-width=".8" />
+          <rect x="12" y="56" width="56" height="38" rx="9" fill="#060d16" stroke="#3d9eff" stroke-width="1"
+            opacity=".85" />
+          <rect x="21" y="63" width="38" height="22" rx="4" fill="#04091a" stroke="rgba(61,158,255,.18)"
+            stroke-width=".5" />
+          <circle cx="31" cy="72" r="3.5" fill="#3d9eff" id="dk-c1" opacity=".15" />
+          <circle cx="40" cy="72" r="3.5" fill="#3d9eff" id="dk-c2" opacity=".15" />
+          <circle cx="49" cy="72" r="3.5" fill="#3d9eff" id="dk-c3" opacity=".15" />
+          <rect x="28" y="79" width="24" height="2" rx="1" fill="rgba(61,158,255,.12)" />
+          <rect x="3" y="58" width="9" height="26" rx="4" fill="#060d16" stroke="rgba(61,158,255,.28)"
+            stroke-width=".8" />
+          <rect x="68" y="58" width="9" height="26" rx="4" fill="#060d16" stroke="rgba(61,158,255,.28)"
+            stroke-width=".8" />
+          <rect x="19" y="93" width="15" height="13" rx="4" fill="#060d16" stroke="rgba(61,158,255,.22)"
+            stroke-width=".8" />
+          <rect x="46" y="93" width="15" height="13" rx="4" fill="#060d16" stroke="rgba(61,158,255,.22)"
+            stroke-width=".8" />
+        </svg>
+      </div>
+      <div class="status-badge badge-idle" id="def-badge">Standby</div>
+      <div class="log-box" id="def-log">
+        <div class="log-line">Awaiting simulation…</div>
+      </div>
+      <div class="score-section">
+        <div class="score-row"><span class="score-key">Def Reward</span><span class="score-val vd"
+            id="def-prot">0.00</span></div>
+        <div class="sbar">
+          <div class="sbar-fill fd" id="def-prot-bar" style="width:0%"></div>
+        </div>
+        <div class="score-row"><span class="score-key">Threats Blocked</span><span class="score-val vd"
+            id="def-blocked">0</span></div>
+        <div class="sbar">
+          <div class="sbar-fill fd" id="def-blocked-bar" style="width:0%"></div>
+        </div>
+        <div class="score-row"><span class="score-key">Rounds Won</span><span class="score-val vd"
+            id="def-wins">0</span></div>
+      </div>
     </div>
   </div>
 
-  <!-- DEFENSE AGENT RIGHT -->
-  <div class="agent-panel right dimmed" id="def-panel">
-    <div class="agent-header">
-      <div class="agent-dot dot-def"></div>
-      <span class="agent-name def-color">Detection Agent</span>
-    </div>
-    <div class="avatar-zone">
-      <div class="agent-halo halo-def"></div>
-      <svg class="robot-svg" width="80" height="108" viewBox="0 0 80 108">
-        <line x1="40" y1="5" x2="40" y2="16" stroke="#3d9eff" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>
-        <circle cx="40" cy="4" r="3.5" fill="#3d9eff" id="dk-ant" opacity=".5"/>
-        <g id="dk-head" style="transform-origin:40px 31px;transition:transform .65s cubic-bezier(.4,0,.2,1)">
-          <rect x="18" y="15" width="44" height="34" rx="8" fill="#090f1c" stroke="#3d9eff" stroke-width="1.1" opacity=".9"/>
-          <rect x="23" y="23" width="34" height="11" rx="3" fill="#06101e" stroke="rgba(61,158,255,.25)" stroke-width=".5"/>
-          <ellipse cx="31" cy="28.5" rx="5" ry="5" fill="#3d9eff" id="dk-eya" opacity=".08"/>
-          <ellipse cx="49" cy="28.5" rx="5" ry="5" fill="#3d9eff" id="dk-eyb" opacity=".08"/>
-          <circle cx="31" cy="28.5" r="2.5" fill="#3d9eff" id="dk-pa" opacity=".2"/>
-          <circle cx="49" cy="28.5" r="2.5" fill="#3d9eff" id="dk-pb" opacity=".2"/>
-          <path d="M25 22 L37 22" stroke="rgba(61,158,255,.2)" stroke-width=".8" stroke-linecap="round"/>
-          <path d="M43 22 L55 22" stroke="rgba(61,158,255,.2)" stroke-width=".8" stroke-linecap="round"/>
-          <path d="M28 40 Q40 36 52 40" fill="none" stroke="rgba(61,158,255,.3)" stroke-width="1" stroke-linecap="round"/>
-          <rect x="11" y="22" width="7" height="9" rx="2.5" fill="#090f1c" stroke="#3d9eff" stroke-width=".8" opacity=".7"/>
-          <rect x="62" y="22" width="7" height="9" rx="2.5" fill="#090f1c" stroke="#3d9eff" stroke-width=".8" opacity=".7"/>
-        </g>
-        <rect x="34" y="49" width="12" height="7" rx="2" fill="#060d1a" stroke="rgba(61,158,255,.2)" stroke-width=".8"/>
-        <rect x="12" y="56" width="56" height="38" rx="9" fill="#060d16" stroke="#3d9eff" stroke-width="1" opacity=".85"/>
-        <rect x="21" y="63" width="38" height="22" rx="4" fill="#04091a" stroke="rgba(61,158,255,.18)" stroke-width=".5"/>
-        <circle cx="31" cy="72" r="3.5" fill="#3d9eff" id="dk-c1" opacity=".15"/>
-        <circle cx="40" cy="72" r="3.5" fill="#3d9eff" id="dk-c2" opacity=".15"/>
-        <circle cx="49" cy="72" r="3.5" fill="#3d9eff" id="dk-c3" opacity=".15"/>
-        <rect x="28" y="79" width="24" height="2" rx="1" fill="rgba(61,158,255,.12)"/>
-        <rect x="3" y="58" width="9" height="26" rx="4" fill="#060d16" stroke="rgba(61,158,255,.28)" stroke-width=".8"/>
-        <rect x="68" y="58" width="9" height="26" rx="4" fill="#060d16" stroke="rgba(61,158,255,.28)" stroke-width=".8"/>
-        <rect x="19" y="93" width="15" height="13" rx="4" fill="#060d16" stroke="rgba(61,158,255,.22)" stroke-width=".8"/>
-        <rect x="46" y="93" width="15" height="13" rx="4" fill="#060d16" stroke="rgba(61,158,255,.22)" stroke-width=".8"/>
-      </svg>
-    </div>
-    <div class="status-badge badge-idle" id="def-badge">Standby</div>
-    <div class="log-box" id="def-log"><div class="log-line">Awaiting simulation…</div></div>
-    <div class="score-section">
-      <div class="score-row"><span class="score-key">Def Reward</span><span class="score-val vd" id="def-prot">0.00</span></div>
-      <div class="sbar"><div class="sbar-fill fd" id="def-prot-bar" style="width:0%"></div></div>
-      <div class="score-row"><span class="score-key">Threats Blocked</span><span class="score-val vd" id="def-blocked">0</span></div>
-      <div class="sbar"><div class="sbar-fill fd" id="def-blocked-bar" style="width:0%"></div></div>
-      <div class="score-row"><span class="score-key">Rounds Won</span><span class="score-val vd" id="def-wins">0</span></div>
-    </div>
-  </div>
-</div>
+  <div id="toast"></div>
 
-<div id="toast"></div>
+  <script>
+    // ── CONFIG ─────────────────────────────────────────────────────────────────
+    // Auto-detect if we're running from the same origin as the server
+    const BASE_URL = window.location.origin;
 
-<script>
-// ── CONFIG ─────────────────────────────────────────────────────────────────
-// Auto-detect if we're running from the same origin as the server
-const BASE_URL = window.location.origin;
+    // ── STATE ──────────────────────────────────────────────────────────────────
+    const S = {
+      running: false, round: 0, totalRounds: 10, clientCount: 12, difficulty: 'medium', phase: 'idle',
+      atkScore: { dmg: 0, comp: 0, wins: 0 }, defScore: { prot: 0, blocked: 0, wins: 0 }, nodes: [],
+      poisonedNodes: [], totalDetections: 0, totalBreaches: 0
+    };
 
-// ── STATE ──────────────────────────────────────────────────────────────────
-const S={running:false,round:0,totalRounds:10,clientCount:12,difficulty:'medium',phase:'idle',
-  atkScore:{dmg:0,comp:0,wins:0},defScore:{prot:0,blocked:0,wins:0},nodes:[],
-  poisonedNodes:[], totalDetections:0, totalBreaches:0};
+    const rand = (a, b) => Math.random() * (b - a) + a;
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    function I(id) { return document.getElementById(id) }
 
-const rand=(a,b)=>Math.random()*(b-a)+a;
-const pick=a=>a[Math.floor(Math.random()*a.length)];
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function I(id){return document.getElementById(id)}
+    // ── PARTICLE ENGINE ────────────────────────────────────────────────────────
+    let particles = [], animFrame = null, particleOn = false;
+    const canvas = I('particle-canvas'), ctx = canvas.getContext('2d');
 
-// ── PARTICLE ENGINE ────────────────────────────────────────────────────────
-let particles=[],animFrame=null,particleOn=false;
-const canvas=I('particle-canvas'),ctx=canvas.getContext('2d');
-
-function resizeCanvas(){const a=I('arena');canvas.width=a.offsetWidth;canvas.height=a.offsetHeight}
-function spawnParticles(){
-  if(!particleOn) return;
-  const arena=I('arena').getBoundingClientRect();
-  S.nodes.forEach((n,i)=>{
-    const el=I(`node-${i}`); if(!el) return;
-    const nr=el.getBoundingClientRect();
-    const cx=nr.left-arena.left+nr.width/2, cy=nr.top-arena.top+nr.height/2;
-    const poison=n.poisoned&&!n.blocked, blocked=n.blocked;
-    const color=poison?'#e05555':blocked?'#3d9eff':'#3ecf8e';
-    const chance=poison?.45:blocked?.2:.18;
-    if(Math.random()>chance) return;
-    const count=poison?Math.ceil(Math.random()*2):1;
-    for(let k=0;k<count;k++){
-      const angle=Math.random()*Math.PI*2;
-      const spd=.25+Math.random()*.55;
-      particles.push({x:cx,y:cy,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd-.5,
-        life:1,decay:.013+Math.random()*.013,r:1+Math.random()*1.6,color});
+    function resizeCanvas() { const a = I('arena'); canvas.width = a.offsetWidth; canvas.height = a.offsetHeight }
+    function spawnParticles() {
+      if (!particleOn) return;
+      const arena = I('arena').getBoundingClientRect();
+      S.nodes.forEach((n, i) => {
+        const el = I(`node-${i}`); if (!el) return;
+        const nr = el.getBoundingClientRect();
+        const cx = nr.left - arena.left + nr.width / 2, cy = nr.top - arena.top + nr.height / 2;
+        const poison = n.poisoned && !n.blocked, blocked = n.blocked;
+        const color = poison ? '#e05555' : blocked ? '#3d9eff' : '#3ecf8e';
+        const chance = poison ? .45 : blocked ? .2 : .18;
+        if (Math.random() > chance) return;
+        const count = poison ? Math.ceil(Math.random() * 2) : 1;
+        for (let k = 0; k < count; k++) {
+          const angle = Math.random() * Math.PI * 2;
+          const spd = .25 + Math.random() * .55;
+          particles.push({
+            x: cx, y: cy, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd - .5,
+            life: 1, decay: .013 + Math.random() * .013, r: 1 + Math.random() * 1.6, color
+          });
+        }
+      });
     }
-  });
-}
-function drawParticles(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  particles=particles.filter(p=>{
-    p.x+=p.vx; p.y+=p.vy; p.vy+=.014; p.life-=p.decay;
-    if(p.life<=0) return false;
-    ctx.save(); ctx.globalAlpha=p.life*.9;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle=p.color; ctx.shadowColor=p.color; ctx.shadowBlur=5;
-    ctx.fill(); ctx.restore();
-    return true;
-  });
-}
-function particleLoop(){
-  if(!particleOn){ctx.clearRect(0,0,canvas.width,canvas.height);return}
-  spawnParticles(); drawParticles(); animFrame=requestAnimationFrame(particleLoop);
-}
-function startParticles(){particleOn=true;particleLoop()}
-function stopParticles(){particleOn=false;if(animFrame)cancelAnimationFrame(animFrame);particles=[];ctx.clearRect(0,0,canvas.width,canvas.height)}
+    function drawParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles = particles.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += .014; p.life -= p.decay;
+        if (p.life <= 0) return false;
+        ctx.save(); ctx.globalAlpha = p.life * .9;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 5;
+        ctx.fill(); ctx.restore();
+        return true;
+      });
+    }
+    function particleLoop() {
+      if (!particleOn) { ctx.clearRect(0, 0, canvas.width, canvas.height); return }
+      spawnParticles(); drawParticles(); animFrame = requestAnimationFrame(particleLoop);
+    }
+    function startParticles() { particleOn = true; particleLoop() }
+    function stopParticles() { particleOn = false; if (animFrame) cancelAnimationFrame(animFrame); particles = []; ctx.clearRect(0, 0, canvas.width, canvas.height) }
 
-// ── AGENT VISUALS ──────────────────────────────────────────────────────────
-let chestInterval=null;
-function setOp(id,v){const el=I(id);if(el)el.setAttribute('opacity',v)}
-function activateAgent(who){
-  const akEls=['ak-eya','ak-eyb','ak-pa','ak-pb'],dkEls=['dk-eya','dk-eyb','dk-pa','dk-pb'];
-  const akC=['ak-c1','ak-c2','ak-c3'],dkC=['dk-c1','dk-c2','dk-c3'];
-  if(who==='atk'){
-    akEls.forEach((id,i)=>setOp(id,i<2?.85:.95)); setOp('ak-ant','1'); akC.forEach(id=>setOp(id,'.88'));
-    dkEls.forEach((id,i)=>setOp(id,i<2?'.04':'.08')); setOp('dk-ant','.18'); dkC.forEach(id=>setOp(id,'.07'));
-    I('ak-head').style.transform='rotate(14deg)'; I('dk-head').style.transform='rotate(0deg)';
-  } else if(who==='def'){
-    dkEls.forEach((id,i)=>setOp(id,i<2?.85:.95)); setOp('dk-ant','1'); dkC.forEach(id=>setOp(id,'.88'));
-    akEls.forEach((id,i)=>setOp(id,i<2?'.04':'.08')); setOp('ak-ant','.18'); akC.forEach(id=>setOp(id,'.07'));
-    I('dk-head').style.transform='rotate(-14deg)'; I('ak-head').style.transform='rotate(0deg)';
-  } else {
-    [...akEls,...dkEls].forEach((id,i)=>setOp(id,i%4<2?'.08':'.18'));
-    [...akC,...dkC].forEach(id=>setOp(id,'.12'));
-    setOp('ak-ant','.45'); setOp('dk-ant','.45');
-    I('ak-head').style.transform='rotate(0deg)'; I('dk-head').style.transform='rotate(0deg)';
-  }
-}
-function startChestFlicker(who){
-  stopChestFlicker();
-  const ids=who==='atk'?['ak-c1','ak-c2','ak-c3']:['dk-c1','dk-c2','dk-c3'];
-  let t=0;
-  chestInterval=setInterval(()=>{t++;const v=(.55+Math.sin(t*.4)*.33).toFixed(2);ids.forEach(id=>{const el=I(id);if(el)el.setAttribute('opacity',v)});},80);
-}
-function stopChestFlicker(){if(chestInterval)clearInterval(chestInterval);chestInterval=null}
+    // ── AGENT VISUALS ──────────────────────────────────────────────────────────
+    let chestInterval = null;
+    function setOp(id, v) { const el = I(id); if (el) el.setAttribute('opacity', v) }
+    function activateAgent(who) {
+      const akEls = ['ak-eya', 'ak-eyb', 'ak-pa', 'ak-pb'], dkEls = ['dk-eya', 'dk-eyb', 'dk-pa', 'dk-pb'];
+      const akC = ['ak-c1', 'ak-c2', 'ak-c3'], dkC = ['dk-c1', 'dk-c2', 'dk-c3'];
+      if (who === 'atk') {
+        akEls.forEach((id, i) => setOp(id, i < 2 ? .85 : .95)); setOp('ak-ant', '1'); akC.forEach(id => setOp(id, '.88'));
+        dkEls.forEach((id, i) => setOp(id, i < 2 ? '.04' : '.08')); setOp('dk-ant', '.18'); dkC.forEach(id => setOp(id, '.07'));
+        I('ak-head').style.transform = 'rotate(14deg)'; I('dk-head').style.transform = 'rotate(0deg)';
+      } else if (who === 'def') {
+        dkEls.forEach((id, i) => setOp(id, i < 2 ? .85 : .95)); setOp('dk-ant', '1'); dkC.forEach(id => setOp(id, '.88'));
+        akEls.forEach((id, i) => setOp(id, i < 2 ? '.04' : '.08')); setOp('ak-ant', '.18'); akC.forEach(id => setOp(id, '.07'));
+        I('dk-head').style.transform = 'rotate(-14deg)'; I('ak-head').style.transform = 'rotate(0deg)';
+      } else {
+        [...akEls, ...dkEls].forEach((id, i) => setOp(id, i % 4 < 2 ? '.08' : '.18'));
+        [...akC, ...dkC].forEach(id => setOp(id, '.12'));
+        setOp('ak-ant', '.45'); setOp('dk-ant', '.45');
+        I('ak-head').style.transform = 'rotate(0deg)'; I('dk-head').style.transform = 'rotate(0deg)';
+      }
+    }
+    function startChestFlicker(who) {
+      stopChestFlicker();
+      const ids = who === 'atk' ? ['ak-c1', 'ak-c2', 'ak-c3'] : ['dk-c1', 'dk-c2', 'dk-c3'];
+      let t = 0;
+      chestInterval = setInterval(() => { t++; const v = (.55 + Math.sin(t * .4) * .33).toFixed(2); ids.forEach(id => { const el = I(id); if (el) el.setAttribute('opacity', v) }); }, 80);
+    }
+    function stopChestFlicker() { if (chestInterval) clearInterval(chestInterval); chestInterval = null }
 
-// ── PHASE ─────────────────────────────────────────────────────────────────
-function setPhase(phase){
-  S.phase=phase; stopChestFlicker();
-  const pb=I('phase-banner'),si=I('server-icon');
-  pb.className='';
-  const atkP=I('atk-panel'),defP=I('def-panel'),atkB=I('atk-badge'),defB=I('def-badge');
-  if(phase==='attack'){
-    pb.textContent='Attack Phase'; pb.className='pa';
-    atkP.className='agent-panel active-atk'; defP.className='agent-panel right dimmed';
-    atkB.className='status-badge badge-w'; atkB.textContent='Attacking';
-    defB.className='status-badge badge-idle'; defB.textContent='Standby';
-    si.classList.remove('active'); activateAgent('atk'); startChestFlicker('atk');
-  } else if(phase==='detect'){
-    pb.textContent='Detection Phase'; pb.className='pd';
-    atkP.className='agent-panel dimmed'; defP.className='agent-panel right active-def';
-    atkB.className='status-badge badge-idle'; atkB.textContent='Waiting';
-    defB.className='status-badge badge-wd'; defB.textContent='Scanning';
-    si.classList.remove('active'); activateAgent('def'); startChestFlicker('def');
-  } else if(phase==='aggregate'){
-    pb.textContent='Aggregating Weights'; pb.className='pg';
-    atkP.className='agent-panel dimmed'; defP.className='agent-panel right dimmed';
-    atkB.className='status-badge badge-idle'; atkB.textContent='Idle';
-    defB.className='status-badge badge-idle'; defB.textContent='Idle';
-    si.classList.add('active'); activateAgent(null);
-  } else {
-    pb.textContent='Idle';
-    atkP.className='agent-panel dimmed'; defP.className='agent-panel right dimmed';
-    atkB.className='status-badge badge-idle'; atkB.textContent='Standby';
-    defB.className='status-badge badge-idle'; defB.textContent='Standby';
-    si.classList.remove('active'); activateAgent(null);
-  }
-}
+    // ── PHASE ─────────────────────────────────────────────────────────────────
+    function setPhase(phase) {
+      S.phase = phase; stopChestFlicker();
+      const pb = I('phase-banner'), si = I('server-icon');
+      pb.className = '';
+      const atkP = I('atk-panel'), defP = I('def-panel'), atkB = I('atk-badge'), defB = I('def-badge');
+      if (phase === 'attack') {
+        pb.textContent = 'Attack Phase'; pb.className = 'pa';
+        atkP.className = 'agent-panel active-atk'; defP.className = 'agent-panel right dimmed';
+        atkB.className = 'status-badge badge-w'; atkB.textContent = 'Attacking';
+        defB.className = 'status-badge badge-idle'; defB.textContent = 'Standby';
+        si.classList.remove('active'); activateAgent('atk'); startChestFlicker('atk');
+      } else if (phase === 'detect') {
+        pb.textContent = 'Detection Phase'; pb.className = 'pd';
+        atkP.className = 'agent-panel dimmed'; defP.className = 'agent-panel right active-def';
+        atkB.className = 'status-badge badge-idle'; atkB.textContent = 'Waiting';
+        defB.className = 'status-badge badge-wd'; defB.textContent = 'Scanning';
+        si.classList.remove('active'); activateAgent('def'); startChestFlicker('def');
+      } else if (phase === 'aggregate') {
+        pb.textContent = 'Aggregating Weights'; pb.className = 'pg';
+        atkP.className = 'agent-panel dimmed'; defP.className = 'agent-panel right dimmed';
+        atkB.className = 'status-badge badge-idle'; atkB.textContent = 'Idle';
+        defB.className = 'status-badge badge-idle'; defB.textContent = 'Idle';
+        si.classList.add('active'); activateAgent(null);
+      } else {
+        pb.textContent = 'Idle';
+        atkP.className = 'agent-panel dimmed'; defP.className = 'agent-panel right dimmed';
+        atkB.className = 'status-badge badge-idle'; atkB.textContent = 'Standby';
+        defB.className = 'status-badge badge-idle'; defB.textContent = 'Standby';
+        si.classList.remove('active'); activateAgent(null);
+      }
+    }
 
-// ── UI HELPERS ─────────────────────────────────────────────────────────────
-function showError(msg){const b=I('error-banner');b.textContent=msg;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),5000)}
-function hideError(){I('error-banner').classList.remove('show')}
-function showToast(msg,dur=2400){const t=I('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur)}
-function showLoading(v){I('loading-overlay').classList.toggle('show',v)}
+    // ── UI HELPERS ─────────────────────────────────────────────────────────────
+    function showError(msg) { const b = I('error-banner'); b.textContent = msg; b.classList.add('show'); setTimeout(() => b.classList.remove('show'), 5000) }
+    function hideError() { I('error-banner').classList.remove('show') }
+    function showToast(msg, dur = 2400) { const t = I('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), dur) }
+    function showLoading(v) { I('loading-overlay').classList.toggle('show', v) }
 
-function addLog(el,text,cls=''){
-  const d=document.createElement('div'); d.className='log-line'+(cls?' '+cls:'');
-  d.textContent=text; el.appendChild(d);
-  while(el.children.length>30) el.removeChild(el.firstChild);
-  el.scrollTop=el.scrollHeight;
-}
+    function addLog(el, text, cls = '') {
+      const d = document.createElement('div'); d.className = 'log-line' + (cls ? ' ' + cls : '');
+      d.textContent = text; el.appendChild(d);
+      while (el.children.length > 30) el.removeChild(el.firstChild);
+      el.scrollTop = el.scrollHeight;
+    }
 
-function buildPips(){
-  const rb=I('round-bar'); rb.innerHTML='';
-  for(let i=0;i<S.totalRounds;i++){
-    const p=document.createElement('div'); p.className='round-pip'; p.id=`pip-${i}`; rb.appendChild(p);
-  }
-}
-function updatePips(){
-  for(let i=0;i<S.totalRounds;i++){
-    const p=I(`pip-${i}`); if(!p) continue;
-    p.className='round-pip'+(i<S.round?' done':i===S.round?' active':'');
-  }
-}
+    function buildPips() {
+      const rb = I('round-bar'); rb.innerHTML = '';
+      for (let i = 0; i < S.totalRounds; i++) {
+        const p = document.createElement('div'); p.className = 'round-pip'; p.id = `pip-${i}`; rb.appendChild(p);
+      }
+    }
+    function updatePips() {
+      for (let i = 0; i < S.totalRounds; i++) {
+        const p = I(`pip-${i}`); if (!p) continue;
+        p.className = 'round-pip' + (i < S.round ? ' done' : i === S.round ? ' active' : '');
+      }
+    }
 
-// ── CLIENT GRID ────────────────────────────────────────────────────────────
-function buildGrid(){
-  const n=S.clientCount, cols=Math.ceil(Math.sqrt(n*1.35));
-  const cg=I('client-grid');
-  cg.style.gridTemplateColumns=`repeat(${cols},28px)`; cg.innerHTML=''; S.nodes=[];
-  for(let i=0;i<n;i++){
-    const div=document.createElement('div'); div.className='client-node good'; div.id=`node-${i}`;
-    const dot=document.createElement('div'); dot.className='node-dot'; div.appendChild(dot);
-    cg.appendChild(div); S.nodes.push({poisoned:false,blocked:false});
-  }
-  updateHUD();
-}
-function setNode(i,poisoned,blocked=false){
-  const el=I(`node-${i}`); if(!el||i>=S.nodes.length) return;
-  S.nodes[i].poisoned=poisoned; S.nodes[i].blocked=blocked;
-  el.className='client-node '+(blocked?'blocked':poisoned?'bad':'good');
-}
-function updateHUD(){
-  I('hud-poisoned').textContent=S.nodes.filter(n=>n.poisoned&&!n.blocked).length;
-  I('hud-blocked').textContent=S.nodes.filter(n=>n.blocked).length;
-}
-function setAccHud(acc){I('hud-acc').textContent=acc.toFixed(3)}
+    // ── CLIENT GRID ────────────────────────────────────────────────────────────
+    function buildGrid() {
+      const n = S.clientCount, cols = Math.ceil(Math.sqrt(n * 1.35));
+      const cg = I('client-grid');
+      cg.style.gridTemplateColumns = `repeat(${cols},28px)`; cg.innerHTML = ''; S.nodes = [];
+      for (let i = 0; i < n; i++) {
+        const div = document.createElement('div'); div.className = 'client-node good'; div.id = `node-${i}`;
+        const dot = document.createElement('div'); dot.className = 'node-dot'; div.appendChild(dot);
+        cg.appendChild(div); S.nodes.push({ poisoned: false, blocked: false });
+      }
+      updateHUD();
+    }
+    function setNode(i, poisoned, blocked = false) {
+      const el = I(`node-${i}`); if (!el || i >= S.nodes.length) return;
+      S.nodes[i].poisoned = poisoned; S.nodes[i].blocked = blocked;
+      el.className = 'client-node ' + (blocked ? 'blocked' : poisoned ? 'bad' : 'good');
+    }
+    function updateHUD() {
+      I('hud-poisoned').textContent = S.nodes.filter(n => n.poisoned && !n.blocked).length;
+      I('hud-blocked').textContent = S.nodes.filter(n => n.blocked).length;
+    }
+    function setAccHud(acc) { I('hud-acc').textContent = acc.toFixed(3) }
 
-function launchPacket(idx,poison){
-  const el=I(`node-${idx}`); if(!el) return;
-  const ar=I('arena').getBoundingClientRect(), nr=el.getBoundingClientRect();
-  const sx=nr.left-ar.left+nr.width/2, sy=nr.top-ar.top+nr.height/2;
-  const pkt=document.createElement('div'); pkt.className='packet '+(poison?'poison':'clean');
-  pkt.style.left=(sx-2.5)+'px'; pkt.style.top=(sy-2.5)+'px';
-  I('packets-layer').appendChild(pkt); setTimeout(()=>pkt.remove(),1400);
-}
+    function launchPacket(idx, poison) {
+      const el = I(`node-${idx}`); if (!el) return;
+      const ar = I('arena').getBoundingClientRect(), nr = el.getBoundingClientRect();
+      const sx = nr.left - ar.left + nr.width / 2, sy = nr.top - ar.top + nr.height / 2;
+      const pkt = document.createElement('div'); pkt.className = 'packet ' + (poison ? 'poison' : 'clean');
+      pkt.style.left = (sx - 2.5) + 'px'; pkt.style.top = (sy - 2.5) + 'px';
+      I('packets-layer').appendChild(pkt); setTimeout(() => pkt.remove(), 1400);
+    }
 
-// ── SCORES ─────────────────────────────────────────────────────────────────
-function updateScores(){
-  I('atk-dmg').textContent=S.atkScore.dmg.toFixed(2);
-  I('atk-comp').textContent=S.atkScore.comp;
-  I('atk-wins').textContent=S.atkScore.wins;
-  I('def-prot').textContent=S.defScore.prot.toFixed(2);
-  I('def-blocked').textContent=S.defScore.blocked;
-  I('def-wins').textContent=S.defScore.wins;
-  I('atk-dmg-bar').style.width=Math.min(Math.abs(S.atkScore.dmg)/30*100,100)+'%';
-  I('atk-comp-bar').style.width=Math.min(S.atkScore.comp/S.clientCount*100,100)+'%';
-  I('def-prot-bar').style.width=Math.min(Math.abs(S.defScore.prot)/30*100,100)+'%';
-  I('def-blocked-bar').style.width=Math.min(S.defScore.blocked/(S.totalRounds*4)*100,100)+'%';
-}
+    // ── SCORES ─────────────────────────────────────────────────────────────────
+    function updateScores() {
+      I('atk-dmg').textContent = S.atkScore.dmg.toFixed(2);
+      I('atk-comp').textContent = S.atkScore.comp;
+      I('atk-wins').textContent = S.atkScore.wins;
+      I('def-prot').textContent = S.defScore.prot.toFixed(2);
+      I('def-blocked').textContent = S.defScore.blocked;
+      I('def-wins').textContent = S.defScore.wins;
+      I('atk-dmg-bar').style.width = Math.min(Math.abs(S.atkScore.dmg) / 30 * 100, 100) + '%';
+      I('atk-comp-bar').style.width = Math.min(S.atkScore.comp / S.clientCount * 100, 100) + '%';
+      I('def-prot-bar').style.width = Math.min(Math.abs(S.defScore.prot) / 30 * 100, 100) + '%';
+      I('def-blocked-bar').style.width = Math.min(S.defScore.blocked / (S.totalRounds * 4) * 100, 100) + '%';
+    }
 
-// ── BACKEND API CALLS ──────────────────────────────────────────────────────
-async function apiReset(){
-  const key=I('api-key-input').value.trim();
-  if(!key){showError('Please enter your Groq API key first!');return null;}
-  const body={
-    groq_api_key:key,
-    groq_model:I('model-select').value,
-    num_clients:S.clientCount,
-    num_rounds:S.totalRounds,
-    difficulty:S.difficulty
-  };
-  showLoading(true);
-  try{
-    const r=await fetch(`${BASE_URL}/api/ui/reset`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok){const e=await r.text();throw new Error(`Server error ${r.status}: ${e}`);}
-    return await r.json();
-  } catch(e){showError(e.message);return null;}
-  finally{showLoading(false);}
-}
+    // ── BACKEND API CALLS ──────────────────────────────────────────────────────
+    async function apiReset() {
+      const key = I('api-key-input').value.trim();
+      if (!key) { showError('Please enter your Groq API key first!'); return null; }
+      const body = {
+        groq_api_key: key,
+        groq_model: I('model-select').value,
+        num_clients: S.clientCount,
+        num_rounds: S.totalRounds,
+        difficulty: S.difficulty
+      };
+      showLoading(true);
+      try {
+        const r = await fetch(`${BASE_URL}/api/ui/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) { const e = await r.text(); throw new Error(`Server error ${r.status}: ${e}`); }
+        return await r.json();
+      } catch (e) { showError(e.message); return null; }
+      finally { showLoading(false); }
+    }
 
-async function apiStep(){
-  const key=I('api-key-input').value.trim();
-  const body={
-    groq_api_key:key,
-    groq_model:I('model-select').value,
-    num_clients:S.clientCount,
-    num_rounds:S.totalRounds,
-    difficulty:S.difficulty
-  };
-  showLoading(true);
-  try{
-    const r=await fetch(`${BASE_URL}/api/ui/step`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok){const e=await r.text();throw new Error(`Server error ${r.status}: ${e}`);}
-    return await r.json();
-  } catch(e){showError(e.message);return null;}
-  finally{showLoading(false);}
-}
+    async function apiStep() {
+      const key = I('api-key-input').value.trim();
+      const body = {
+        groq_api_key: key,
+        groq_model: I('model-select').value,
+        num_clients: S.clientCount,
+        num_rounds: S.totalRounds,
+        difficulty: S.difficulty
+      };
+      showLoading(true);
+      try {
+        const r = await fetch(`${BASE_URL}/api/ui/step`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) { const e = await r.text(); throw new Error(`Server error ${r.status}: ${e}`); }
+        return await r.json();
+      } catch (e) { showError(e.message); return null; }
+      finally { showLoading(false); }
+    }
 
-// ── MAIN SIMULATION LOOP ───────────────────────────────────────────────────
-async function runRound(){
-  if(!S.running) return;
-  S.round++; updatePips(); I('round-label').textContent=`Round ${S.round} / ${S.totalRounds}`;
+    // ── MAIN SIMULATION LOOP ───────────────────────────────────────────────────
+    async function runRound() {
+      if (!S.running) return;
+      S.round++; updatePips(); I('round-label').textContent = `Round ${S.round} / ${S.totalRounds}`;
 
-  // Clear nodes fresh for this round visuals
-  for(let i=0;i<S.nodes.length;i++) setNode(i,false,false);
+      // Clear nodes fresh for this round visuals
+      for (let i = 0; i < S.nodes.length; i++) setNode(i, false, false);
 
-  // ATTACK phase visual
-  setPhase('attack'); await sleep(400);
+      // ATTACK phase visual
+      setPhase('attack'); await sleep(400);
 
-  // CALL REAL BACKEND
-  const data=await apiStep();
-  if(!data){S.running=false;I('start-btn').textContent='▶ Start';setPhase('idle');return;}
-  if(data.error){showError(data.error);S.running=false;setPhase('idle');return;}
+      // CALL REAL BACKEND
+      const data = await apiStep();
+      if (!data) { S.running = false; I('start-btn').textContent = '▶ Start'; setPhase('idle'); return; }
+      if (data.error) { showError(data.error); S.running = false; setPhase('idle'); return; }
 
-  // Update nodes from real env poisoner data
-  S.poisonedNodes=data.poisoned_nodes||[];
-  const atkTargets=data.attacker?.targets||[];
-  const defTargets=data.defender?.targets||[];
+      // Update nodes from real env poisoner data
+      S.poisonedNodes = data.poisoned_nodes || [];
+      const atkTargets = data.attacker?.targets || [];
+      const defTargets = data.defender?.targets || [];
 
-  // Mark poisoned
-  S.poisonedNodes.forEach(i=>setNode(i,true,false));
-  addLog(I('atk-log'),`Round ${S.round} — ${data.attacker.attack_type} on [${atkTargets.join(',')}]`,'ah');
-  addLog(I('atk-log'),data.attacker.reasoning||'Deploying attack…','hi');
-  await sleep(500);
+      // Mark poisoned
+      S.poisonedNodes.forEach(i => setNode(i, true, false));
+      addLog(I('atk-log'), `Round ${S.round} — ${data.attacker.attack_type} on [${atkTargets.join(',')}]`, 'ah');
+      addLog(I('atk-log'), data.attacker.reasoning || 'Deploying attack…', 'hi');
+      await sleep(500);
 
-  // DETECT phase
-  setPhase('detect'); await sleep(400);
-  defTargets.forEach(i=>setNode(i,false,true));
-  updateHUD(); setAccHud(data.global_accuracy);
-  addLog(I('def-log'),`Round ${S.round} — ${data.defender.action_type} on [${defTargets.join(',')}]`,'dh');
-  addLog(I('def-log'),data.defender.explanation||'Scanning for anomalies…','hi');
-  await sleep(400);
+      // DETECT phase
+      setPhase('detect'); await sleep(400);
+      defTargets.forEach(i => setNode(i, false, true));
+      updateHUD(); setAccHud(data.global_accuracy);
+      addLog(I('def-log'), `Round ${S.round} — ${data.defender.action_type} on [${defTargets.join(',')}]`, 'dh');
+      addLog(I('def-log'), data.defender.explanation || 'Scanning for anomalies…', 'hi');
+      await sleep(400);
 
-  // Update scores from real rewards
-  S.atkScore.dmg+=data.attacker.reward;
-  S.defScore.prot+=data.defender.reward;
-  S.atkScore.comp+=data.metrics.attacker_breach||0;
-  S.defScore.blocked+=data.metrics.correct_detections||0;
-  S.totalDetections+=data.metrics.correct_detections||0;
-  S.totalBreaches+=data.metrics.attacker_breach||0;
+      // Update scores from real rewards
+      S.atkScore.dmg += data.attacker.reward;
+      S.defScore.prot += data.defender.reward;
+      S.atkScore.comp += data.metrics.attacker_breach || 0;
+      S.defScore.blocked += data.metrics.correct_detections || 0;
+      S.totalDetections += data.metrics.correct_detections || 0;
+      S.totalBreaches += data.metrics.attacker_breach || 0;
 
-  const atkWon=(data.metrics.attacker_breach||0)>(data.metrics.correct_detections||0);
-  if(atkWon){S.atkScore.wins++;addLog(I('atk-log'),`Round ${S.round}: Breached ${data.metrics.attacker_breach} nodes`,'ah');}
-  else{S.defScore.wins++;addLog(I('def-log'),`Round ${S.round}: Blocked ${data.metrics.correct_detections}/${S.poisonedNodes.length}`,'dh');}
-  updateScores();
+      const atkWon = (data.metrics.attacker_breach || 0) > (data.metrics.correct_detections || 0);
+      if (atkWon) { S.atkScore.wins++; addLog(I('atk-log'), `Round ${S.round}: Breached ${data.metrics.attacker_breach} nodes`, 'ah'); }
+      else { S.defScore.wins++; addLog(I('def-log'), `Round ${S.round}: Blocked ${data.metrics.correct_detections}/${S.poisonedNodes.length}`, 'dh'); }
+      updateScores();
 
-  // AGGREGATE phase
-  setPhase('aggregate');
-  for(let i=0;i<S.clientCount;i++) setTimeout(()=>launchPacket(i,S.nodes[i]?.poisoned&&!S.nodes[i]?.blocked),i*50);
-  await sleep(S.clientCount*52+700);
+      // AGGREGATE phase
+      setPhase('aggregate');
+      for (let i = 0; i < S.clientCount; i++) setTimeout(() => launchPacket(i, S.nodes[i]?.poisoned && !S.nodes[i]?.blocked), i * 50);
+      await sleep(S.clientCount * 52 + 700);
 
-  showToast(atkWon?`Round ${S.round}: Attacker wins (Rew_A=${data.attacker.reward.toFixed(1)})`:
-                    `Round ${S.round}: Defender wins (Rew_D=${data.defender.reward.toFixed(1)})`);
+      showToast(atkWon ? `Round ${S.round}: Attacker wins (Rew_A=${data.attacker.reward.toFixed(1)})` :
+        `Round ${S.round}: Defender wins (Rew_D=${data.defender.reward.toFixed(1)})`);
 
-  if(!data.done && S.round<S.totalRounds && S.running){
-    await sleep(700); runRound();
-  } else {
-    endSim();
-  }
-}
+      if (!data.done && S.round < S.totalRounds && S.running) {
+        await sleep(700); runRound();
+      } else {
+        endSim();
+      }
+    }
 
-function endSim(){
-  S.running=false; I('start-btn').textContent='▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker();
-  I('phase-banner').textContent='Simulation Complete';
-  const a=S.atkScore.wins,d=S.defScore.wins,w=a>d?'Attack Agent':a<d?'Detection Agent':'Tie';
-  showToast(`Simulation complete — ${w} wins (${a}:${d})`,4000);
-  addLog(I('atk-log'),`Done. Rounds won: ${a} | Total breach: ${S.totalBreaches}`,'ah');
-  addLog(I('def-log'),`Done. Rounds won: ${d} | Total blocked: ${S.totalDetections}`,'dh');
-}
+    function endSim() {
+      S.running = false; I('start-btn').textContent = '▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker();
+      I('phase-banner').textContent = 'Simulation Complete';
+      const a = S.atkScore.wins, d = S.defScore.wins, w = a > d ? 'Attack Agent' : a < d ? 'Detection Agent' : 'Tie';
+      showToast(`Simulation complete — ${w} wins (${a}:${d})`, 4000);
+      addLog(I('atk-log'), `Done. Rounds won: ${a} | Total breach: ${S.totalBreaches}`, 'ah');
+      addLog(I('def-log'), `Done. Rounds won: ${d} | Total blocked: ${S.totalDetections}`, 'dh');
+    }
 
-// ── CONTROLS ──────────────────────────────────────────────────────────────
-async function startSimulation(){
-  if(S.running){S.running=false;I('start-btn').textContent='▶ Start';setPhase('idle');stopParticles();stopChestFlicker();return;}
-  const key=I('api-key-input').value.trim();
-  if(!key){showError('Enter your Groq API key to start!');return;}
-  hideError();
-  S.running=true; I('start-btn').textContent='⏹ Stop';
-  I('start-overlay').classList.add('hidden');
-  S.totalRounds=parseInt(I('rounds-select').value)||10;
-  S.difficulty=I('difficulty-select').value;
-  S.round=0; S.atkScore={dmg:0,comp:0,wins:0}; S.defScore={prot:0,blocked:0,wins:0};
-  S.totalDetections=0; S.totalBreaches=0;
-  buildPips(); buildGrid(); updateScores();
-  I('atk-log').innerHTML=''; I('def-log').innerHTML='';
-  addLog(I('atk-log'),'Simulation initialized');
-  addLog(I('def-log'),'Detection systems online');
-  resizeCanvas(); startParticles();
+    // ── CONTROLS ──────────────────────────────────────────────────────────────
+    async function startSimulation() {
+      if (S.running) { S.running = false; I('start-btn').textContent = '▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker(); return; }
+      const key = I('api-key-input').value.trim();
+      if (!key) { showError('Enter your Groq API key to start!'); return; }
+      hideError();
+      S.running = true; I('start-btn').textContent = '⏹ Stop';
+      I('start-overlay').classList.add('hidden');
+      S.totalRounds = parseInt(I('rounds-select').value) || 10;
+      S.difficulty = I('difficulty-select').value;
+      S.round = 0; S.atkScore = { dmg: 0, comp: 0, wins: 0 }; S.defScore = { prot: 0, blocked: 0, wins: 0 };
+      S.totalDetections = 0; S.totalBreaches = 0;
+      buildPips(); buildGrid(); updateScores();
+      I('atk-log').innerHTML = ''; I('def-log').innerHTML = '';
+      addLog(I('atk-log'), 'Simulation initialized');
+      addLog(I('def-log'), 'Detection systems online');
+      resizeCanvas(); startParticles();
 
-  // Reset the real backend env
-  const resetData=await apiReset();
-  if(!resetData){S.running=false;I('start-btn').textContent='▶ Start';return;}
-  addLog(I('atk-log'),`Env ready: ${resetData.num_clients} clients, ${resetData.poisoner_count} poisoners`,'hi');
-  addLog(I('def-log'),`Difficulty: ${resetData.difficulty} | Rounds: ${resetData.num_rounds}`,'hi');
+      // Reset the real backend env
+      const resetData = await apiReset();
+      if (!resetData) { S.running = false; I('start-btn').textContent = '▶ Start'; return; }
+      addLog(I('atk-log'), `Env ready: ${resetData.num_clients} clients, ${resetData.poisoner_count} poisoners`, 'hi');
+      addLog(I('def-log'), `Difficulty: ${resetData.difficulty} | Rounds: ${resetData.num_rounds}`, 'hi');
 
-  runRound();
-}
+      runRound();
+    }
 
-function resetAll(){
-  S.running=false; S.round=0;
-  S.atkScore={dmg:0,comp:0,wins:0}; S.defScore={prot:0,blocked:0,wins:0};
-  S.totalRounds=parseInt(I('rounds-select').value)||10; S.difficulty=I('difficulty-select').value;
-  I('start-btn').textContent='▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker();
-  buildPips(); buildGrid(); updateScores();
-  I('round-label').textContent='Round — / —';
-  I('atk-log').innerHTML='<div class="log-line">Simulation reset.</div>';
-  I('def-log').innerHTML='<div class="log-line">Simulation reset.</div>';
-  I('start-overlay').classList.remove('hidden'); I('packets-layer').innerHTML='';
-  hideError();
-}
+    function resetAll() {
+      S.running = false; S.round = 0;
+      S.atkScore = { dmg: 0, comp: 0, wins: 0 }; S.defScore = { prot: 0, blocked: 0, wins: 0 };
+      S.totalRounds = parseInt(I('rounds-select').value) || 10; S.difficulty = I('difficulty-select').value;
+      I('start-btn').textContent = '▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker();
+      buildPips(); buildGrid(); updateScores();
+      I('round-label').textContent = 'Round — / —';
+      I('atk-log').innerHTML = '<div class="log-line">Simulation reset.</div>';
+      I('def-log').innerHTML = '<div class="log-line">Simulation reset.</div>';
+      I('start-overlay').classList.remove('hidden'); I('packets-layer').innerHTML = '';
+      hideError();
+    }
 
-function updateClientCount(val){S.clientCount=parseInt(val);I('client-count-label').textContent=val;if(!S.running)buildGrid()}
-function toggleKey(){const inp=I('api-key-input');inp.type=inp.type==='password'?'text':'password'}
+    function updateClientCount(val) { S.clientCount = parseInt(val); I('client-count-label').textContent = val; if (!S.running) buildGrid() }
+    function toggleKey() { const inp = I('api-key-input'); inp.type = inp.type === 'password' ? 'text' : 'password' }
 
-// ── INIT ──────────────────────────────────────────────────────────────────
-window.addEventListener('resize',resizeCanvas);
-resizeCanvas(); buildPips(); buildGrid(); activateAgent(null);
-</script>
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); buildPips(); buildGrid(); activateAgent(null);
+  </script>
 </body>
+
 </html>
