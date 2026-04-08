@@ -11,20 +11,53 @@ from openai import OpenAI
 from sharperner_env import SharpernerEnv, SharpernerAction
 
 load_dotenv()
-# Configuration from Environment Variables (Mandatory)
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-# IMAGE_NAME = os.getenv("IMAGE_NAME") or os.getenv("LOCAL_IMAGE_NAME")
+
+# Multi-provider LLM Router with Fallback
+HF_TOKEN = os.getenv("HF_TOKEN")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Primary provider configuration
+PRIMARY_PROVIDER = "HuggingFace" if HF_TOKEN else "Groq"
+
+# HuggingFace config (primary if available)
+HF_BASE_URL = "https://router.huggingface.co/v1"
+HF_MODEL = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_CLIENT = OpenAI(base_url=HF_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN else None
+
+# Groq config (fallback or primary)
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_CLIENT = OpenAI(base_url=GROQ_BASE_URL, api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+# Validate that at least one provider is available
+if not HF_CLIENT and not GROQ_CLIENT:
+    import sys
+    print("[ERROR] No LLM provider configured! Set either HF_TOKEN or GROQ_API_KEY", flush=True)
+    sys.exit(1)
+
+# Warn if HF is primary but Groq is not available for fallback
+if HF_CLIENT and not GROQ_CLIENT:
+    print("[WARNING] HuggingFace set as primary but GROQ_API_KEY not configured. If HF quota is exceeded (402), requests will fail!", flush=True)
+
+# Use primary, fallback to secondary
+if PRIMARY_PROVIDER == "HuggingFace" and HF_CLIENT:
+    client = HF_CLIENT
+    MODEL_NAME = HF_MODEL
+    API_BASE_URL = HF_BASE_URL
+elif GROQ_CLIENT:
+    client = GROQ_CLIENT
+    MODEL_NAME = GROQ_MODEL
+    API_BASE_URL = GROQ_BASE_URL
+else:
+    raise ValueError("No valid LLM provider configured. Set HF_TOKEN or GROQ_API_KEY.")
 
 TASK_NAME = os.getenv("TASK_NAME", "recall-evaluation")
 BENCHMARK = os.getenv("BENCHMARK", "sharperner-rl-v1")
 MAX_ROUNDS = 10
 DIFFICULTY = os.getenv("DIFFICULTY", "medium").lower()
 
-# OpenAI Client for all LLM calls
-# The api_key must be a string; use a placeholder if none provided
-client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY or "none")
+# Track provider failures for fallback
+hf_failed = False
 
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
@@ -42,66 +75,146 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
 
 def get_llm_response(messages: list, temperature: float = 0.7, max_tokens: int = 600) -> str:
-    """Core LLM communication function - unified for HF/OpenAI"""
-    try:
-        # Ensure message content is string
-        safe_messages = []
-        for msg in messages:
-            m = dict(msg)
-            if not isinstance(m.get("content"), str):
-                m["content"] = str(m.get("content", ""))
-            safe_messages.append(m)
+    """Core LLM communication - auto-fallback from HF to Groq on 402/quota errors"""
+    global hf_failed, client, MODEL_NAME
+    
+    # Ensure message content is string
+    safe_messages = []
+    for msg in messages:
+        m = dict(msg)
+        if not isinstance(m.get("content"), str):
+            m["content"] = str(m.get("content", ""))
+        safe_messages.append(m)
 
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=safe_messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=False,
-        )
-        text = (completion.choices[0].message.content or "").strip()
-        
-        # Extract JSON if needed (common for agents)
-        if "{" in text and "}" in text:
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if match:
-                return match.group()
-        return text
+    # Try HuggingFace first (if not already failed and available)
+    if HF_CLIENT and not hf_failed:
+        try:
+            completion = HF_CLIENT.chat.completions.create(
+                model=HF_MODEL,
+                messages=safe_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=False,
+            )
+            text = (completion.choices[0].message.content or "").strip()
             
-    except Exception as e:
-        print(f"[DEBUG] LLM Router error: {e}", flush=True)
-        return "Failed to get LLM response."
+            # Extract JSON if needed
+            if "{" in text and "}" in text:
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    return match.group()
+            return text
+            
+        except Exception as e:
+            error_str = str(e)
+            # Detect quota/billing errors (402, 410, 429, out of credits, payment required)
+            # 410 = endpoint deprecated/gone; fallback to Groq immediately
+            is_quota_error = any(keyword in error_str for keyword in ["402", "410", "429", "Payment", "credits", "depleted", "quota", "limit", "no longer supported"])
+            
+            if is_quota_error:
+                print(f"[WARNING] HuggingFace quota/endpoint error, switching to Groq fallback. Error: {error_str}", flush=True)
+                hf_failed = True
+                # Continue to Groq fallback below
+            else:
+                print(f"[DEBUG] HuggingFace error: {error_str}", flush=True)
+                if not GROQ_CLIENT:
+                    return "Failed to get LLM response."
+                # Continue to Groq fallback below
+
+    # Try Groq as fallback or primary
+    if GROQ_CLIENT:
+        try:
+            completion = GROQ_CLIENT.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=safe_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=False,
+            )
+            text = (completion.choices[0].message.content or "").strip()
+            
+            # Extract JSON if needed
+            if "{" in text and "}" in text:
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    return match.group()
+            return text
+            
+        except Exception as e:
+            print(f"[DEBUG] Groq error: {e}", flush=True)
+            return "Failed to get LLM response."
+    
+    return "Failed to get LLM response."
 
 def get_llm_action(role: str, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
-    """Uses the mandatory OpenAI client to generate an action JSON"""
-    try:
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
-            max_tokens=600,
-            stream=False,
-        )
-        text = (completion.choices[0].message.content or "").strip()
-        
-        # Extract JSON block
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
-        extracted = json_match.group() if json_match else text
-        
+    """Generates action JSON with automatic HF->Groq fallback"""
+    global hf_failed
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    
+    # Try HuggingFace first (if not already failed)
+    if HF_CLIENT and not hf_failed:
         try:
-            return json.loads(extracted)
-        except json.JSONDecodeError:
-            try:
-                return ast.literal_eval(extracted)
-            except:
-                return {}
+            completion = HF_CLIENT.chat.completions.create(
+                model=HF_MODEL,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=600,
+                stream=False,
+            )
+            text = (completion.choices[0].message.content or "").strip()
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            extracted = json_match.group() if json_match else text
             
-    except Exception as e:
-        print(f"[DEBUG] {role} LLM failure: {e}", flush=True)
-        return {}
+            try:
+                return json.loads(extracted)
+            except json.JSONDecodeError:
+                try:
+                    return ast.literal_eval(extracted)
+                except:
+                    return {}
+            
+        except Exception as e:
+            error_str = str(e)
+            # Detect quota/billing errors and 410 endpoint deprecation
+            is_quota_error = any(keyword in error_str for keyword in ["402", "410", "429", "Payment", "credits", "depleted", "quota", "limit", "no longer supported"])
+            
+            if is_quota_error:
+                print(f"[WARNING] HuggingFace quota/endpoint error for {role}, switching to Groq. Error: {error_str}", flush=True)
+                hf_failed = True
+            else:
+                print(f"[DEBUG] HuggingFace error for {role}: {e}", flush=True)
+
+    # Try Groq as fallback or primary
+    if GROQ_CLIENT:
+        try:
+            completion = GROQ_CLIENT.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=600,
+                stream=False,
+            )
+            text = (completion.choices[0].message.content or "").strip()
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            extracted = json_match.group() if json_match else text
+            
+            try:
+                return json.loads(extracted)
+            except json.JSONDecodeError:
+                try:
+                    return ast.literal_eval(extracted)
+                except:
+                    return {}
+            
+        except Exception as e:
+            print(f"[DEBUG] Groq error for {role}: {e}", flush=True)
+            return {}
+    
+    return {}
 
 async def main():
     # Initialize environment via standard /reset API

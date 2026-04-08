@@ -7,3 +7,32 @@ runtime: fastapi
 app: server.app:app
 port: 8000
 
+tasks:
+  - id: task1
+    name: "Task 1 (Easy - Detection Recall)"
+    difficulty: "easy"
+    description: "Measure defender recall of malicious client detection."
+  - id: task2
+    name: "Task 2 (Medium - Pattern Precision)"
+    difficulty: "medium"
+    description: "Measure defender precision and pattern recognition."
+  - id: task3
+    name: "Task 3 (Hard - Adversarial Resilience & Speed)"
+    difficulty: "hard"
+    description: "Measure advanced adversarial resilience and detection speed."
+
+grading:
+  task_definitions_endpoint: "/api/task_definitions"
+  tasks:
+    - id: task1
+      name: "Task 1 (Easy - Detection Recall)"
+      difficulty: "easy"
+      description: "Measure defender recall of malicious client detection."
+    - id: task2
+      name: "Task 2 (Medium - Pattern Precision)"
+      difficulty: "medium"
+      description: "Measure defender precision and pattern recognition."
+    - id: task3
+      name: "Task 3 (Hard - Adversarial Resilience & Speed)"
+      difficulty: "hard"
+      description: "Measure advanced adversarial resilience and detection speed."

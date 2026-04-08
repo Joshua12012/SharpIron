@@ -1,5 +1,5 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 import asyncio
 import json
 import os
@@ -12,11 +12,12 @@ from .environment import FederatedAdversarialEnv
 from models import AttackerAction, DefenderAction, Observation, RewardInfo
 from agents.attacker import AttackerAgent
 from agents.defender import DefenderAgent
-from graders import grader_summary
+from graders import TASK_DEFINITIONS, grader_summary
 
 app = FastAPI(
     title="SharpernerRL",
-    docs_url="/",
+    docs_url="/docs",
+    redoc_url="/redoc",
     openapi_url="/openapi.json",
     redirect_slashes=False
 )
@@ -35,6 +36,10 @@ app.add_middleware(
 os.makedirs("server/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="server/static"), name="static")
 
+@app.get("/", include_in_schema=False)
+def root_redirect():
+    return RedirectResponse(url="/docs")
+
 # Standard Defaults for OpenEnv Validation
 DEFAULT_CLIENTS = 20
 DEFAULT_ROUNDS = 15
@@ -45,6 +50,7 @@ DEFAULT_DIFFICULTY = "medium"
 env = FederatedAdversarialEnv(num_clients=DEFAULT_CLIENTS, num_rounds=DEFAULT_ROUNDS)
 attacker_agent = AttackerAgent()
 defender_agent = DefenderAgent()
+last_grade_summary: Optional[Dict[str, Any]] = None
 
 def log_start():
     import time
@@ -180,6 +186,15 @@ async def run_episode_generator(request: EpisodeRequest):
         "graders": grader_res["tasks"]
     }
     yield f"data: {json.dumps(done_data)}\n\n"
+    global last_grade_summary
+    last_grade_summary = {
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "accuracy": env.global_accuracy,
+        "tasks": grader_res["tasks"],
+        "overall": grader_res.get("overall", {})
+    }
     
     # Calculate standardized final metrics
     try:
@@ -198,11 +213,37 @@ async def run_episode(request: Optional[EpisodeRequest] = None):
     req = request or EpisodeRequest()
     return StreamingResponse(run_episode_generator(req), media_type="text/event-stream")
 
+@app.get("/api/task_definitions")
+def get_task_definitions():
+    return {"tasks": TASK_DEFINITIONS}
+
+@app.get("/api/graders")
+def get_graders():
+    return {
+        "grading": {
+            "tasks": TASK_DEFINITIONS,
+            "endpoint": "/api/task_definitions",
+            "results_endpoint": "/api/grade_results"
+        }
+    }
+
+@app.get("/api/tasks")
+def get_tasks():
+    return {"tasks": TASK_DEFINITIONS}
+
+@app.get("/api/grade_results")
+def get_grade_results():
+    if last_grade_summary is None:
+        raise HTTPException(status_code=404, detail="No grading results available yet. Run /api/run_episode first.")
+    return {"grading_results": last_grade_summary}
+
 import random
 
 class StepRequest(BaseModel):
     attacker_action: Optional[AttackerAction] = None
     defender_action: Optional[DefenderAction] = None
+    action: Optional[Dict[str, Any]] = None
+    difficulty: Optional[str] = None
 
 class ResetRequest(BaseModel):
     num_clients: int = DEFAULT_CLIENTS
@@ -215,6 +256,12 @@ class StepResponse(BaseModel):
     reward: float
     done: bool
     info: dict
+    attacker_action: Optional[Dict[str, Any]] = None
+    defender_action: Optional[Dict[str, Any]] = None
+
+@app.post("/api/reset")
+async def reset_env_api(request: Optional[ResetRequest] = None):
+    return await reset_env(request)
 
 @app.post("/reset")
 async def reset_env(request: Optional[ResetRequest] = None):
@@ -236,25 +283,42 @@ async def reset_env(request: Optional[ResetRequest] = None):
     log_start()
     return obs
 
+@app.post("/api/step", response_model=StepResponse)
+async def step_env_api(request: Optional[StepRequest] = None):
+    return await step_env(request)
+
 @app.post("/step", response_model=StepResponse)
 async def step_env(request: Optional[StepRequest] = None):
     """Execute one round of the simulation using Smart Agents or custom inputs"""
-    
-    # Get current telemetry for the agents to reason about
+
     current_obs = env._get_observation()
     light_obs = current_obs.dict() if hasattr(current_obs, 'dict') else current_obs.copy()
     if "client_updates" in light_obs:
         del light_obs["client_updates"]
 
-    # 1. Provide Smart Attacker Default (if not provided)
-    atk = request.attacker_action if request and request.attacker_action else None
+    # 1. Parse any explicit action wrapper from the request for compatibility
+    atk = None
+    dfn = None
+    if request:
+        if request.action:
+            atk = request.action.get("attacker_action")
+            dfn = request.action.get("defender_action")
+        atk = request.attacker_action if request.attacker_action is not None else atk
+        dfn = request.defender_action if request.defender_action is not None else dfn
+
+    # 2. Determine difficulty: use request value when present, otherwise fall back to hardcoded default
+    request_difficulty = request.difficulty if request and request.difficulty else DEFAULT_DIFFICULTY
+
     if not atk:
-        atk = attacker_agent.act(light_obs, DEFAULT_DIFFICULTY)
-    
-    # 2. Provide Smart Defender Default (if not provided)
-    dfn = request.defender_action if request and request.defender_action else None
+        atk = attacker_agent.act(light_obs, request_difficulty)
+    elif isinstance(atk, dict):
+        atk = AttackerAction(**atk)
+
+    # 3. Provide Smart Defender Default if not provided
     if not dfn:
         dfn = defender_agent.act(light_obs)
+    elif isinstance(dfn, dict):
+        dfn = DefenderAction(**dfn)
 
     observation, a_rew, d_rew, info = env.step(atk, dfn)
     
@@ -273,7 +337,9 @@ async def step_env(request: Optional[StepRequest] = None):
         "observation": observation,
         "reward": d_rew,
         "done": observation.done,
-        "info": info
+        "info": info,
+        "attacker_action": atk.dict() if hasattr(atk, 'dict') else None,
+        "defender_action": dfn.dict() if hasattr(dfn, 'dict') else None
     }
 
 @app.get("/state")
