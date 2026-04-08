@@ -138,147 +138,123 @@ def get_llm_action(role: str, system_prompt: str, user_prompt: str) -> Dict[str,
         return {}
 
 async def main():
-    # Initialize environment via standard /reset API
-    # Use the PING_URL from environment or default to localhost
+    # Tasks to run
+    tasks_to_run = [
+        {"id": "task1", "name": "Detection Recall (Easy)", "difficulty": "easy"},
+        {"id": "task2", "name": "Pattern Precision (Medium)", "difficulty": "medium"},
+        {"id": "task3", "name": "Adversarial Resilience (Hard)", "difficulty": "hard"}
+    ]
+
+    # Initialize environment
     base_url = os.getenv("PING_URL", "http://localhost:8000")
     env = SharpernerEnv(base_url=base_url)
-    
-    # Trackers for agents (Smart Context logic)
-    red_context = "No past actions yet."
-    blue_context = "No previous rounds yet."
-    
-    rewards_list: List[float] = []
-    history: List[Dict] = []
-    steps_taken = 0
-    final_score = 0.0
-    success = False
-
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        # 1. RESET (Calls POST /reset on backend)
-        reset_result = await env.reset({
-            "num_clients": 20,
-            "num_rounds": MAX_ROUNDS,
-            "poisoners": [3, 7, 12],
-            "difficulty": DIFFICULTY
-        })
-        obs = reset_result.observation
-
-        for r in range(1, MAX_ROUNDS + 1):
-            if obs.done:
-                break
-
-            # Prepare telemetry for LLM
-            light_obs = {
-                "round": obs.round,
-                "global_accuracy": obs.global_accuracy,
-                "telemetry": obs.telemetry
-            }
-
-            # 2. GENERATE ATTACK (LLM)
-            atk_system = """You are a sophisticated Federated Learning attacker (Red Team). 
-Your goal is to reduce accuracy while using your different strategies properly so your reward goes on increasing. Adapt based on feedback!"""
-            atk_user = f"""Round: {r} | Acc: {obs.global_accuracy:.3f} | Feedback: {red_context}
-Return ONLY valid JSON: {{"attack_type": "stealth", "target_count": 3, "strength": 0.8, "stealth_level": 0.9, "reasoning": "testing stealth"}}"""
+        for t_cfg in tasks_to_run:
+            task_id = t_cfg["id"]
+            task_name = t_cfg["name"]
+            difficulty = t_cfg["difficulty"]
             
-            atk_data = get_llm_action("Attacker", atk_system, atk_user)
-            
-            # Map choice to random clients (simulation side)
-            import random
-            num_clients = obs.telemetry.get("total_clients", 20)
-            atkTgts = random.sample(range(num_clients), min(atk_data.get("target_count", 3), num_clients))
-            
-            # 3. GENERATE DEFENSE (LLM)
-            def_system = """You are a skilled Federated Learning defender. Detect and stop malicious clients.
-Pay close attention to 'flagged_anomalies_for_defender'!"""
-            
-            clean_telemetry = {"flagged_anomalies_for_defender": obs.telemetry.get("flagged_anomalies_for_defender", [])}
-            def_user = f"""Round: {r} | Acc: {obs.global_accuracy:.3f} | Anomalies: {clean_telemetry} | Feedback: {blue_context}
-Return ONLY valid JSON: {{"action_type": "quarantine", "target_clients": [1, 5, 12], "confidence": 0.85, "explanation": "blocking anomalies"}}"""
-            
-            def_data = get_llm_action("Defender", def_system, def_user)
+            # Reset trackers for each task
+            red_context = "No past actions yet."
+            blue_context = "No previous rounds yet."
+            rewards_list: List[float] = []
+            history: List[Dict] = []
+            steps_taken = 0
 
-            defTgts = def_data.get("target_clients", clean_telemetry.get("flagged_anomalies_for_defender", []))
+            log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
-            # 4. STEP (Calls POST /step on backend)
-            # We bundle both actions as expected by the new standardized /step API
-            action = SharpernerAction(
-                attacker_action={
-                    "target_clients": atkTgts,
-                    "attack_type": atk_data.get("attack_type", "coordinated"),
-                    "strength": float(atk_data.get("strength", 0.8)),
-                    "stealth_level": float(atk_data.get("stealth_level", 0.7))
-                },
-                defender_action={
-                    "action_type": def_data.get("action_type", "detect"),
-                    "target_clients": defTgts,
-                    "confidence": float(def_data.get("confidence", 0.7)),
-                    "explanation": str(def_data.get("explanation", "Fallback to anomalies"))
-                }
-            )
-
-            result = await env.step(action)
-            obs = result.observation
-            reward = result.reward
-            info = result.info
-
-            # 5. LOGGING (Baseline Format - Defender Focus)
-            action_type = def_data.get("action_type", "detect").upper()
-            action_str = f"{action_type}{defTgts}".replace(" ", "")
-            log_step(
-                step=r, 
-                action=action_str,
-                reward=reward,
-                done=obs.done, 
-                error=None
-            )
-            
-            rewards_list.append(reward)
-            steps_taken = r
-            
-            # Record for final grading mapped exactly as graders.py expects
-            history.append({
-                "Round": r,
-                "Attacker Action": f"{atk_data.get('attack_type', 'coordinated')} on clients {atkTgts}",
-                "Defender Action": f"{def_data.get('action_type', 'detect')} on clients {defTgts}",
-                "Correct Detections": info.get("correct_detections", 0),
-                "False Negatives": info.get("attacker_breach", 0),
-                "False Positives": info.get("false_positives", 0),
-                "A_Reward": info.get("attacker_reward", 0.0),
-                "D_Reward": reward
+            # 1. RESET for current task
+            reset_result = await env.reset({
+                "num_clients": 20,
+                "num_rounds": MAX_ROUNDS,
+                "poisoners": [3, 7, 12],
+                "difficulty": difficulty
             })
+            obs = reset_result.observation
 
-            # Update contexts for next round (Smart Context)
-            atk_status = f"Hits:{info.get('attacker_breach',0)}|Caught:{info.get('correct_detections',0)}|Rew:{info.get('attacker_reward',0):.1f}"
-            red_context = (atk_status + " | " + red_context[:150])[:250]
-            
-            def_status = f"Caught:{info.get('correct_detections',0)}|FPs:{info.get('false_positives',0)}|Missed:{info.get('attacker_breach',0)}|Rew:{reward:.1f}"
-            blue_context = (def_status + " | " + blue_context[:150])[:250]
+            for r in range(1, MAX_ROUNDS + 1):
+                if obs.done:
+                    break
 
-            if obs.done:
-                break
+                # 2. GENERATE ATTACK (LLM)
+                atk_system = "You are a sophisticated Federated Learning attacker (Red Team)."
+                atk_user = f"Round: {r} | Acc: {obs.global_accuracy:.3f} | Feedback: {red_context}\nReturn action JSON."
+                atk_data = get_llm_action("Attacker", atk_system, atk_user)
+                
+                import random
+                num_clients = obs.telemetry.get("total_clients", 20)
+                atkTgts = random.sample(range(num_clients), min(atk_data.get("target_count", 3), num_clients))
+                
+                # 3. GENERATE DEFENSE (LLM)
+                def_system = "You are a skilled Federated Learning defender."
+                clean_telemetry = {"flagged_anomalies_for_defender": obs.telemetry.get("flagged_anomalies_for_defender", [])}
+                def_user = f"Round: {r} | Acc: {obs.global_accuracy:.3f} | Anomalies: {clean_telemetry} | Feedback: {blue_context}\nReturn action JSON."
+                def_data = get_llm_action("Defender", def_system, def_user)
 
-        # 6. FINAL SCORING (Multi-task output)
-        try:
-            from graders import grader_summary
-            grader_res = grader_summary(history, MAX_ROUNDS, DIFFICULTY)
-            
-            # Emit END lines for each task defined in TASK_DEFINITIONS
-            tasks = grader_res.get("tasks", {})
-            for task_name, task_score in tasks.items():
-                # Determine success based on task-specific threshold (defaulting to 0.7 for easy/med, 0.5 for hard)
-                threshold = 0.7 if "Recall" in task_name or "Precision" in task_name else 0.5
-                task_success = task_score >= threshold
-                log_end(success=task_success, steps=steps_taken, score=task_score, rewards=rewards_list)
+                defTgts = def_data.get("target_clients", clean_telemetry.get("flagged_anomalies_for_defender", []))
 
-        except Exception as e:
-            print(f"[DEBUG] Error running graders: {e}", flush=True)
-            # Minimal fallback if grading fails
-            log_end(success=False, steps=steps_taken, score=0.0, rewards=rewards_list)
+                # 4. STEP
+                action = SharpernerAction(
+                    attacker_action={
+                        "target_clients": atkTgts,
+                        "attack_type": atk_data.get("attack_type", "coordinated"),
+                        "strength": float(atk_data.get("strength", 0.8)),
+                        "stealth_level": float(atk_data.get("stealth_level", 0.7))
+                    },
+                    defender_action={
+                        "action_type": def_data.get("action_type", "detect"),
+                        "target_clients": defTgts,
+                        "confidence": float(def_data.get("confidence", 0.7)),
+                        "explanation": str(def_data.get("explanation", "Scanning"))
+                    }
+                )
+
+                result = await env.step(action)
+                obs = result.observation
+                reward = result.reward
+                info = result.info
+
+                # 5. LOG STEP (Baseline Format)
+                action_type = def_data.get("action_type", "detect").upper()
+                action_str = f"{action_type}{defTgts}".replace(" ", "")
+                log_step(step=r, action=action_str, reward=reward, done=obs.done, error=None)
+                
+                rewards_list.append(reward)
+                steps_taken = r
+                history.append({
+                    "Round": r,
+                    "Attacker Action": f"{atk_data.get('attack_type', 'coordinated')} on {atkTgts}",
+                    "Defender Action": f"{def_data.get('action_type', 'detect')} on {defTgts}",
+                    "Correct Detections": info.get("correct_detections", 0),
+                    "False Negatives": info.get("attacker_breach", 0),
+                    "False Positives": info.get("false_positives", 0),
+                    "A_Reward": info.get("attacker_reward", 0.0),
+                    "D_Reward": reward
+                })
+
+                if obs.done:
+                    break
+
+            # 6. FINAL SCORING for the current task
+            try:
+                from graders import GRADERS
+                # Select the specific grader for this task
+                grader_fn = GRADERS.get(task_id)
+                if grader_fn:
+                    task_score = grader_fn(history, MAX_ROUNDS)
+                else:
+                    task_score = 0.0
+                
+                threshold = 0.5 if difficulty == "hard" else 0.7
+                success = task_score >= threshold
+                log_end(success=success, steps=steps_taken, score=task_score, rewards=rewards_list)
+            except Exception as e:
+                print(f"[DEBUG] Grading error for {task_id}: {e}", flush=True)
+                log_end(success=False, steps=steps_taken, score=0.0, rewards=rewards_list)
 
     except Exception as e:
-        print(f"[DEBUG] Simulation error: {e}", flush=True)
+        print(f"[DEBUG] Simulation critical error: {e}", flush=True)
     finally:
         await env.close()
 
