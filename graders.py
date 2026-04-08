@@ -38,7 +38,7 @@ TASK_DEFINITIONS = [
 # Grader metadata exposing all 3 graders for validator discovery
 GRADER_DEFINITIONS = [
     {
-        "id": "grader_task1",
+        "id": "task1",
         "task_id": "task1",
         "name": "Detection Recall Grader",
         "difficulty": "easy",
@@ -46,7 +46,7 @@ GRADER_DEFINITIONS = [
         "grader_function": "grade_task1_recall"
     },
     {
-        "id": "grader_task2",
+        "id": "task2",
         "task_id": "task2",
         "name": "Pattern Precision Grader",
         "difficulty": "medium",
@@ -54,7 +54,7 @@ GRADER_DEFINITIONS = [
         "grader_function": "grade_task2_precision"
     },
     {
-        "id": "grader_task3",
+        "id": "task3",
         "task_id": "task3",
         "name": "Adversarial Resilience Grader",
         "difficulty": "hard",
@@ -62,6 +62,13 @@ GRADER_DEFINITIONS = [
         "grader_function": "grade_task3_resilience"
     }
 ]
+
+# Required by validator for grader discovery — maps task id → grader function
+GRADERS = {
+    "task1": grade_task1_recall,
+    "task2": grade_task2_precision,
+    "task3": grade_task3_resilience,
+}
 
 def grade_task1_recall(episode_history: List[Dict], num_rounds: int) -> float:
     """Task 1: Detection Recall (Easy)"""

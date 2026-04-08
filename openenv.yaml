@@ -1,38 +1,34 @@
-spec_version: 1
 name: sharperner-rl
-title: "SharpernerRL: Adversarial Federated Learning"
-version: "1.0.0"
+title: SharpernerRL Federated Adversarial Environment
+description: >
+  Red-Blue adversarial federated learning simulation with
+  attacker and defender agents across multiple difficulty levels.
+
 type: space
 runtime: fastapi
 app: server.app:app
 port: 8000
 
+tags:
+  - openenv
+  - reinforcement-learning
+  - federated-learning
+
 tasks:
   - id: task1
-    name: "Task 1 (Easy - Detection Recall)"
-    difficulty: "easy"
-    description: "Measure defender recall of malicious client detection."
-  - id: task2
-    name: "Task 2 (Medium - Pattern Precision)"
-    difficulty: "medium"
-    description: "Measure defender precision and pattern recognition."
-  - id: task3
-    name: "Task 3 (Hard - Adversarial Resilience & Speed)"
-    difficulty: "hard"
-    description: "Measure advanced adversarial resilience and detection speed."
+    name: Task 1 (Easy - Detection Recall)
+    description: >
+      Measure defender recall of malicious client detection.
+      Defender must identify poisoned clients across rounds.
 
-grading:
-  task_definitions_endpoint: "/api/task_definitions"
-  tasks:
-    - id: task1
-      name: "Task 1 (Easy - Detection Recall)"
-      difficulty: "easy"
-      description: "Measure defender recall of malicious client detection."
-    - id: task2
-      name: "Task 2 (Medium - Pattern Precision)"
-      difficulty: "medium"
-      description: "Measure defender precision and pattern recognition."
-    - id: task3
-      name: "Task 3 (Hard - Adversarial Resilience & Speed)"
-      difficulty: "hard"
-      description: "Measure advanced adversarial resilience and detection speed."
+  - id: task2
+    name: Task 2 (Medium - Pattern Precision)
+    description: >
+      Measure defender precision and pattern recognition.
+      Minimize false positives while maintaining detection.
+
+  - id: task3
+    name: Task 3 (Hard - Adversarial Resilience & Speed)
+    description: >
+      Measure advanced adversarial resilience and detection speed.
+      Handle coordinated attacks and detect early.
