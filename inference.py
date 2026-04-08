@@ -12,16 +12,10 @@ from sharperner_env import SharpernerEnv, SharpernerAction
 
 load_dotenv()
 
-# Configuration for Evaluation Validator - Strictly following instructions
-API_BASE_URL = os.environ.get("API_BASE_URL")
-API_KEY = os.environ.get("API_KEY") 
-MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-
-# Fallbacks for local development if environment variables are not set
-if not API_BASE_URL:
-    API_BASE_URL = os.getenv("HF_ENDPOINT", "https://router.huggingface.co/v1")
-if not API_KEY:
-    API_KEY = os.getenv("HF_TOKEN")
+# Configuration for Evaluation Validator
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
 # Initialize OpenAI client as requested
 client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY) if API_KEY else None
@@ -43,11 +37,11 @@ hf_failed = False
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
-def log_step(step: int, attacker_targets: List[int], defender_targets: List[int], attacker_reward: float, defender_reward: float, done: bool, error: Optional[str]) -> None:
+def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
     done_val = str(done).lower()
     print(
-        f"[STEP] step={step} | Atk_Targets={attacker_targets} | Def_Targets={defender_targets} | Rew_A={attacker_reward:.2f} | Rew_D={defender_reward:.2f} | done={done_val} | error={error_val}",
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
         flush=True,
     )
 
@@ -229,13 +223,13 @@ Return ONLY valid JSON: {{"action_type": "quarantine", "target_clients": [1, 5, 
             reward = result.reward
             info = result.info
 
-            # 5. LOGGING (Detailed Format)
+            # 5. LOGGING (Baseline Format - Defender Focus)
+            action_type = def_data.get("action_type", "detect").upper()
+            action_str = f"{action_type}{defTgts}".replace(" ", "")
             log_step(
                 step=r, 
-                attacker_targets=atkTgts,
-                defender_targets=defTgts,
-                attacker_reward=info.get("attacker_reward", 0.0),
-                defender_reward=reward,
+                action=action_str,
+                reward=reward,
                 done=obs.done, 
                 error=None
             )
@@ -265,34 +259,28 @@ Return ONLY valid JSON: {{"action_type": "quarantine", "target_clients": [1, 5, 
             if obs.done:
                 break
 
-        # 6. FINAL SCORING
+        # 6. FINAL SCORING (Multi-task output)
         try:
             from graders import grader_summary
             grader_res = grader_summary(history, MAX_ROUNDS, DIFFICULTY)
-            final_score = float(grader_res["tasks"].get("Task 1 (Easy - Detection Recall)", 0.0))
-            success = final_score >= 0.8
             
-            # Log grader results for validator discovery
-            for task_name, score in grader_res["tasks"].items():
-                print(f"[GRADER] task={task_name} score={score:.3f}", flush=True)
+            # Emit END lines for each task defined in TASK_DEFINITIONS
+            tasks = grader_res.get("tasks", {})
+            for task_name, task_score in tasks.items():
+                # Determine success based on task-specific threshold (defaulting to 0.7 for easy/med, 0.5 for hard)
+                threshold = 0.7 if "Recall" in task_name or "Precision" in task_name else 0.5
+                task_success = task_score >= threshold
+                log_end(success=task_success, steps=steps_taken, score=task_score, rewards=rewards_list)
+
         except Exception as e:
             print(f"[DEBUG] Error running graders: {e}", flush=True)
-            # Fallback to manual calculation
-            def calculate_score(hist, num_rds):
-                tps = sum(h["Correct Detections"] for h in hist)
-                fns = sum(h["False Negatives"] for h in hist)
-                if (tps + fns) == 0: return 0.0
-                recall = tps / (tps + fns)
-                return min(1.0, recall / 0.8)
-
-            final_score = calculate_score(history, steps_taken)
-            success = final_score >= 0.1
+            # Minimal fallback if grading fails
+            log_end(success=False, steps=steps_taken, score=0.0, rewards=rewards_list)
 
     except Exception as e:
         print(f"[DEBUG] Simulation error: {e}", flush=True)
     finally:
         await env.close()
-        log_end(success=success, steps=steps_taken, score=final_score, rewards=rewards_list)
 
 if __name__ == "__main__":
     asyncio.run(main())

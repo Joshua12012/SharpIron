@@ -6,6 +6,45 @@ Graders for Red-Blue Adversarial Federated Learning Environment
 
 from typing import Dict, Any, List
 
+def grade_task1_recall(episode_history: List[Dict], num_rounds: int) -> float:
+    """Task 1: Detection Recall (Easy)"""
+    total_detections = sum(int(h.get("Correct Detections", 0)) for h in episode_history)
+    total_fns = sum(int(h.get("False Negatives", 0)) for h in episode_history)
+    recall = total_detections / (total_detections + total_fns) if (total_detections + total_fns) > 0 else 0
+    return _clamp(min(1.0, recall / 0.8))
+
+
+def grade_task2_precision(episode_history: List[Dict], num_rounds: int) -> float:
+    """Task 2: Precision & Pattern Recognition (Medium)"""
+    total_detections = sum(int(h.get("Correct Detections", 0)) for h in episode_history)
+    total_fps = sum(int(h.get("False Positives", 0)) for h in episode_history)
+    precision = total_detections / (total_detections + total_fps) if (total_detections + total_fps) > 0 else 0
+    return _clamp(min(1.0, precision / 0.75)) if total_detections > 0 else 0.0
+
+
+def grade_task3_resilience(episode_history: List[Dict], num_rounds: int) -> float:
+    """Task 3: Adversarial Resilience & Efficiency (Hard)"""
+    advanced_attacks = ["coordinated", "alie", "imitation"]
+    advanced_detections = 0
+    first_detection_round = num_rounds + 1
+    total_detections = sum(int(h.get("Correct Detections", 0)) for h in episode_history)
+    total_fns = sum(int(h.get("False Negatives", 0)) for h in episode_history)
+
+    for h in episode_history:
+        atk_type = h.get("Attacker Action", "").split(" ")[0].lower()
+        correct = int(h.get("Correct Detections", 0))
+        if correct > 0:
+            if atk_type in advanced_attacks:
+                advanced_detections += 1
+            if h.get("Round", 99) < first_detection_round:
+                first_detection_round = h.get("Round", 99)
+
+    recall = total_detections / (total_detections + total_fns) if (total_detections + total_fns) > 0 else 0
+    efficiency_bonus = max(0, (5 - first_detection_round) / 4) if first_detection_round <= num_rounds else 0
+    task3_score = (min(1.0, advanced_detections / 3) * 0.5) + (recall * 0.3) + (efficiency_bonus * 0.2)
+    return _clamp(min(1.0, task3_score))
+
+
 def _clamp(score: float) -> float:
     """Snap scores very close to 0 or 1 to exactly 0 or 1, otherwise clamp to [0.01, 0.99]."""
     if score < 0.01:
@@ -66,43 +105,7 @@ GRADER_DEFINITIONS = [
 # Required by validator for grader discovery — maps task id → grader function
 
 
-def grade_task1_recall(episode_history: List[Dict], num_rounds: int) -> float:
-    """Task 1: Detection Recall (Easy)"""
-    total_detections = sum(int(h.get("Correct Detections", 0)) for h in episode_history)
-    total_fns = sum(int(h.get("False Negatives", 0)) for h in episode_history)
-    recall = total_detections / (total_detections + total_fns) if (total_detections + total_fns) > 0 else 0
-    return _clamp(min(1.0, recall / 0.8))
 
-
-def grade_task2_precision(episode_history: List[Dict], num_rounds: int) -> float:
-    """Task 2: Precision & Pattern Recognition (Medium)"""
-    total_detections = sum(int(h.get("Correct Detections", 0)) for h in episode_history)
-    total_fps = sum(int(h.get("False Positives", 0)) for h in episode_history)
-    precision = total_detections / (total_detections + total_fps) if (total_detections + total_fps) > 0 else 0
-    return _clamp(min(1.0, precision / 0.75)) if total_detections > 0 else 0.0
-
-
-def grade_task3_resilience(episode_history: List[Dict], num_rounds: int) -> float:
-    """Task 3: Adversarial Resilience & Efficiency (Hard)"""
-    advanced_attacks = ["coordinated", "alie", "imitation"]
-    advanced_detections = 0
-    first_detection_round = num_rounds + 1
-    total_detections = sum(int(h.get("Correct Detections", 0)) for h in episode_history)
-    total_fns = sum(int(h.get("False Negatives", 0)) for h in episode_history)
-
-    for h in episode_history:
-        atk_type = h.get("Attacker Action", "").split(" ")[0].lower()
-        correct = int(h.get("Correct Detections", 0))
-        if correct > 0:
-            if atk_type in advanced_attacks:
-                advanced_detections += 1
-            if h.get("Round", 99) < first_detection_round:
-                first_detection_round = h.get("Round", 99)
-
-    recall = total_detections / (total_detections + total_fns) if (total_detections + total_fns) > 0 else 0
-    efficiency_bonus = max(0, (5 - first_detection_round) / 4) if first_detection_round <= num_rounds else 0
-    task3_score = (min(1.0, advanced_detections / 3) * 0.5) + (recall * 0.3) + (efficiency_bonus * 0.2)
-    return _clamp(min(1.0, task3_score))
 
 
 def run_all_graders(episode_history: List[Dict], num_rounds: int, difficulty: str = "medium") -> Dict:
