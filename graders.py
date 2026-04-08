@@ -64,11 +64,7 @@ GRADER_DEFINITIONS = [
 ]
 
 # Required by validator for grader discovery — maps task id → grader function
-GRADERS = {
-    "task1": grade_task1_recall,
-    "task2": grade_task2_precision,
-    "task3": grade_task3_resilience,
-}
+
 
 def grade_task1_recall(episode_history: List[Dict], num_rounds: int) -> float:
     """Task 1: Detection Recall (Easy)"""
@@ -149,3 +145,8 @@ def grader_summary(episode_history: List[Dict], num_rounds: int, difficulty: str
             "Balance Score": scores['overall_balance']
         }
     }
+GRADERS = {
+    "task1": grade_task1_recall,
+    "task2": grade_task2_precision,
+    "task3": grade_task3_resilience,
+}
