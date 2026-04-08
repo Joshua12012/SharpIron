@@ -297,6 +297,135 @@ class StepResponse(BaseModel):
     attacker_action: Optional[Dict[str, Any]] = None
     defender_action: Optional[Dict[str, Any]] = None
 
+class UISimRequest(BaseModel):
+    groq_api_key: str
+    num_clients: int = 12
+    num_rounds: int = 10
+    difficulty: str = "medium"
+    groq_model: str = "llama-3.1-8b-instant"
+
+def _get_ui_llm_action(groq_key: str, model: str, role: str, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+    """Run one LLM call using a user-supplied Groq key, scoped only to this request."""
+    import re
+    try:
+        from openai import OpenAI
+        c = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=groq_key)
+        completion = c.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+            temperature=0.7, max_tokens=400, stream=False,
+        )
+        text = (completion.choices[0].message.content or "").strip()
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        extracted = match.group() if match else text
+        try:
+            return json.loads(extracted)
+        except Exception:
+            return {}
+    except Exception as e:
+        print(f"[UI-LLM] {role} error: {e}", flush=True)
+        return {}
+
+# Isolated env instance purely for the UI simulation so it never races with the OpenEnv evaluator
+_ui_env: Optional[FederatedAdversarialEnv] = None
+
+@app.post("/api/ui/reset")
+async def ui_reset(req: UISimRequest):
+    """Reset a fresh isolated environment for the browser UI simulation."""
+    global _ui_env
+    import random
+    # Auto-generate random poisoner list scaled to difficulty
+    ratio = {"easy": 0.10, "medium": 0.25, "hard": 0.40, "extreme": 0.55}.get(req.difficulty, 0.25)
+    n_poison = max(1, int(req.num_clients * ratio))
+    poisoners = random.sample(range(req.num_clients), n_poison)
+    _ui_env = FederatedAdversarialEnv(num_clients=req.num_clients, num_rounds=req.num_rounds)
+    _ui_env.set_config(poison_list=poisoners, num_rounds=req.num_rounds,
+                       num_clients=req.num_clients, difficulty=req.difficulty)
+    obs = _ui_env.reset()
+    return {
+        "status": "ok",
+        "num_clients": req.num_clients,
+        "num_rounds": req.num_rounds,
+        "difficulty": req.difficulty,
+        "poisoner_count": len(poisoners),
+        "global_accuracy": obs.global_accuracy,
+        "round": obs.round,
+    }
+
+@app.post("/api/ui/step")
+async def ui_step(req: UISimRequest):
+    """Run one real environment step for the browser UI, using the user's Groq key for both agents."""
+    global _ui_env
+    import random, re
+    if _ui_env is None:
+        return {"error": "Call /api/ui/reset first"}
+
+    obs = _ui_env._get_observation()
+    light_obs = obs.dict()
+    light_obs.pop("client_updates", None)
+
+    anomalies = obs.telemetry.get("flagged_anomalies_for_defender", [])
+
+    # --- Attacker LLM ---
+    atk_system = "You are a Federated Learning attacker. Pick attack type to reduce accuracy. Adapt each round."
+    atk_user = (f"Round {obs.round+1} | Acc: {obs.global_accuracy:.3f}\n"
+                f"Return ONLY JSON: {{\"attack_type\": \"stealth\", \"target_count\": 3, \"strength\": 0.8, \"stealth_level\": 0.9, \"reasoning\": \"example\"}}")
+    atk_data = _get_ui_llm_action(req.groq_api_key, req.groq_model, "Attacker", atk_system, atk_user)
+
+    num_clients = obs.telemetry.get("total_clients", req.num_clients)
+    atk_targets = random.sample(range(num_clients), min(atk_data.get("target_count", 3), num_clients))
+
+    # --- Defender LLM ---
+    def_system = "You are a Federated Learning defender. Detect and quarantine malicious clients using the anomaly data."
+    def_user = (f"Round {obs.round+1} | Acc: {obs.global_accuracy:.3f} | Anomalies: {anomalies}\n"
+                f"Return ONLY JSON: {{\"action_type\": \"quarantine\", \"target_clients\": {anomalies if anomalies else [1]}, \"confidence\": 0.85, \"explanation\": \"blocking anomalies\"}}")
+    def_data = _get_ui_llm_action(req.groq_api_key, req.groq_model, "Defender", def_system, def_user)
+
+    def_targets = def_data.get("target_clients", anomalies)
+
+    # --- Env Step ---
+    atk_action = AttackerAction(
+        target_clients=atk_targets,
+        attack_type=atk_data.get("attack_type", "stealth"),
+        strength=float(atk_data.get("strength", 0.8)),
+        stealth_level=float(atk_data.get("stealth_level", 0.7)),
+    )
+    def_action = DefenderAction(
+        action_type=def_data.get("action_type", "detect"),
+        target_clients=def_targets,
+        confidence=float(def_data.get("confidence", 0.7)),
+        explanation=str(def_data.get("explanation", "Fallback")),
+    )
+
+    observation, a_rew, d_rew, info = _ui_env.step(atk_action, def_action)
+
+    return {
+        "round": observation.round,
+        "done": observation.done,
+        "global_accuracy": round(observation.global_accuracy, 4),
+        "attacker": {
+            "targets": atk_targets,
+            "attack_type": atk_action.attack_type,
+            "reward": round(a_rew, 2),
+            "reasoning": atk_data.get("reasoning", ""),
+        },
+        "defender": {
+            "targets": def_targets,
+            "action_type": def_action.action_type,
+            "reward": round(d_rew, 2),
+            "explanation": def_data.get("explanation", ""),
+        },
+        "metrics": {
+            "correct_detections": info.get("correct_detections", 0),
+            "false_positives": info.get("false_positives", 0),
+            "attacker_breach": info.get("attacker_breach", 0),
+        },
+        "poisoned_nodes": list(_ui_env.poisoner_ids),
+        "flagged_anomalies": anomalies,
+    }
+
+
+
 # @app.post("/api/reset")
 # async def reset_env_api(request: Optional[ResetRequest] = None):
 #     return await reset_env(request)

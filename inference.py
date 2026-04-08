@@ -12,35 +12,25 @@ from sharperner_env import SharpernerEnv, SharpernerAction
 
 load_dotenv()
 
-# Multi-provider LLM Config
-# To deploy with HF, simply uncomment the HF_TOKEN lines and comment out GROQ
-HF_TOKEN = os.getenv("HF_TOKEN")
-# HF_TOKEN = None
+# Configuration for Evaluation Validator - Strictly following instructions
+API_BASE_URL = os.environ.get("API_BASE_URL")
+API_KEY = os.environ.get("API_KEY") 
+MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
-# GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_API_KEY = None
+# Fallbacks for local development if environment variables are not set
+if not API_BASE_URL:
+    API_BASE_URL = os.getenv("HF_ENDPOINT", "https://router.huggingface.co/v1")
+if not API_KEY:
+    API_KEY = os.getenv("HF_TOKEN")
 
-# HuggingFace config (Commented out for local Groq testing)
-HF_BASE_URL = "https://router.huggingface.co/v1"
-HF_MODEL = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_CLIENT = OpenAI(base_url=HF_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN else None
-# HF_CLIENT = None
-
-# Groq config
-# GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-# GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-# GROQ_CLIENT = OpenAI(base_url=GROQ_BASE_URL, api_key=GROQ_API_KEY) if GROQ_API_KEY else None
-GROQ_CLIENT = None
+# Initialize OpenAI client as requested
+client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY) if API_KEY else None
 
 # Validate provider
 USE_DUMMY_LLM = False
-if not GROQ_CLIENT and not HF_CLIENT:
-    print("[WARNING] No LLM provider configured. Falling back to dummy local LLM behavior.", flush=True)
+if not client:
+    print("[DEBUG] No LLM provider configured (API_KEY missing). Falling back to dummy behavior.", flush=True)
     USE_DUMMY_LLM = True
-
-client = HF_CLIENT or GROQ_CLIENT
-MODEL_NAME = HF_MODEL if HF_CLIENT else "dummy-llm"
-API_BASE_URL = HF_BASE_URL if HF_CLIENT else None
 
 TASK_NAME = os.getenv("TASK_NAME", "recall-evaluation")
 BENCHMARK = os.getenv("BENCHMARK", "sharperner-rl-v1")
