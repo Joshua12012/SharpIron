@@ -35,6 +35,34 @@ TASK_DEFINITIONS = [
     }
 ]
 
+# Grader metadata exposing all 3 graders for validator discovery
+GRADER_DEFINITIONS = [
+    {
+        "id": "grader_task1",
+        "task_id": "task1",
+        "name": "Detection Recall Grader",
+        "difficulty": "easy",
+        "description": "Evaluates defender recall of malicious client detection.",
+        "grader_function": "grade_task1_recall"
+    },
+    {
+        "id": "grader_task2",
+        "task_id": "task2",
+        "name": "Pattern Precision Grader",
+        "difficulty": "medium",
+        "description": "Evaluates defender precision and pattern recognition.",
+        "grader_function": "grade_task2_precision"
+    },
+    {
+        "id": "grader_task3",
+        "task_id": "task3",
+        "name": "Adversarial Resilience Grader",
+        "difficulty": "hard",
+        "description": "Evaluates advanced adversarial resilience and detection speed.",
+        "grader_function": "grade_task3_resilience"
+    }
+]
+
 def grade_task1_recall(episode_history: List[Dict], num_rounds: int) -> float:
     """Task 1: Detection Recall (Easy)"""
     total_detections = sum(int(h.get("Correct Detections", 0)) for h in episode_history)
