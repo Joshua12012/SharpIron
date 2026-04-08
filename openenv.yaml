@@ -17,18 +17,15 @@ tags:
 tasks:
   - id: task1
     name: Task 1 (Easy - Detection Recall)
-    description: >
-      Measure defender recall of malicious client detection.
-      Defender must identify poisoned clients across rounds.
+    description: Measure defender recall of malicious client detection.
+    grader: grade_task1_recall
 
   - id: task2
     name: Task 2 (Medium - Pattern Precision)
-    description: >
-      Measure defender precision and pattern recognition.
-      Minimize false positives while maintaining detection.
+    description: Measure defender precision and pattern recognition.
+    grader: grade_task2_precision
 
   - id: task3
     name: Task 3 (Hard - Adversarial Resilience & Speed)
-    description: >
-      Measure advanced adversarial resilience and detection speed.
-      Handle coordinated attacks and detect early.
+    description: Measure adversarial resilience and detection speed.
+    grader: grade_task3_resilience
