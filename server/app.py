@@ -223,36 +223,36 @@ async def run_episode(request: Optional[EpisodeRequest] = None):
     req = request or EpisodeRequest()
     return StreamingResponse(run_episode_generator(req), media_type="text/event-stream")
 
-@app.get("/api/task_definitions")
-def get_task_definitions():
-    return {"tasks": TASK_DEFINITIONS}
+# @app.get("/api/task_definitions")
+# def get_task_definitions():
+#     return {"tasks": TASK_DEFINITIONS}
 
-@app.get("/api/graders")
-def get_graders():
-    return {
-        "graders": GRADER_DEFINITIONS,
-        "grading": {
-            "tasks": TASK_DEFINITIONS,
-            "graders": GRADER_DEFINITIONS,
-            "endpoint": "/api/task_definitions",
-            "graders_endpoint": "/api/graders",
-            "results_endpoint": "/api/grade_results",
-            "total_graders": len(GRADER_DEFINITIONS)
-        }
-    }
+# @app.get("/api/graders")
+# def get_graders():
+#     return {
+#         "graders": GRADER_DEFINITIONS,
+#         "grading": {
+#             "tasks": TASK_DEFINITIONS,
+#             "graders": GRADER_DEFINITIONS,
+#             "endpoint": "/api/task_definitions",
+#             "graders_endpoint": "/api/graders",
+#             "results_endpoint": "/api/grade_results",
+#             "total_graders": len(GRADER_DEFINITIONS)
+#         }
+#     }
 
-@app.get("/api/tasks")
-def get_tasks():
-    return {"tasks": TASK_DEFINITIONS}
+# @app.get("/api/tasks")
+# def get_tasks():
+#     return {"tasks": TASK_DEFINITIONS}
 
-@app.get("/api/graders_list")
-def get_graders_list():
-    """List all available graders with their metadata"""
-    return {
-        "graders": GRADER_DEFINITIONS,
-        "count": len(GRADER_DEFINITIONS),
-        "tasks_with_graders": [g["task_id"] for g in GRADER_DEFINITIONS]
-    }
+# @app.get("/api/graders_list")
+# def get_graders_list():
+#     """List all available graders with their metadata"""
+#     return {
+#         "graders": GRADER_DEFINITIONS,
+#         "count": len(GRADER_DEFINITIONS),
+#         "tasks_with_graders": [g["task_id"] for g in GRADER_DEFINITIONS]
+#     }
 
 @app.get("/api/grade_results")
 def get_grade_results():
