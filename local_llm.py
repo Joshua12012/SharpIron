@@ -16,7 +16,8 @@ def get_groq_client():
     if client is None:
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            raise ValueError("GROQ_API_KEY environment variable is not set")
+            print("[ERROR] No LLM provider configured! Set either HF_TOKEN or GROQ_API_KEY", flush=True)
+            return None
         client = Groq(api_key=api_key)
     return client
 

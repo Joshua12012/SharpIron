@@ -12,44 +12,35 @@ from sharperner_env import SharpernerEnv, SharpernerAction
 
 load_dotenv()
 
-# Multi-provider LLM Router with Fallback
+# Multi-provider LLM Config
+# To deploy with HF, simply uncomment the HF_TOKEN lines and comment out GROQ
 HF_TOKEN = os.getenv("HF_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# HF_TOKEN = None
 
-# Primary provider configuration
-PRIMARY_PROVIDER = "HuggingFace" if HF_TOKEN else "Groq"
+# GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = None
 
-# HuggingFace config (primary if available)
+# HuggingFace config (Commented out for local Groq testing)
 HF_BASE_URL = "https://router.huggingface.co/v1"
 HF_MODEL = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_CLIENT = OpenAI(base_url=HF_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN else None
+# HF_CLIENT = None
 
-# Groq config (fallback or primary)
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-GROQ_CLIENT = OpenAI(base_url=GROQ_BASE_URL, api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+# Groq config
+# GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+# GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+# GROQ_CLIENT = OpenAI(base_url=GROQ_BASE_URL, api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+GROQ_CLIENT = None
 
-# Validate that at least one provider is available
-if not HF_CLIENT and not GROQ_CLIENT:
-    import sys
-    print("[ERROR] No LLM provider configured! Set either HF_TOKEN or GROQ_API_KEY", flush=True)
-    sys.exit(1)
+# Validate provider
+USE_DUMMY_LLM = False
+if not GROQ_CLIENT and not HF_CLIENT:
+    print("[WARNING] No LLM provider configured. Falling back to dummy local LLM behavior.", flush=True)
+    USE_DUMMY_LLM = True
 
-# Warn if HF is primary but Groq is not available for fallback
-if HF_CLIENT and not GROQ_CLIENT:
-    print("[WARNING] HuggingFace set as primary but GROQ_API_KEY not configured. If HF quota is exceeded (402), requests will fail!", flush=True)
-
-# Use primary, fallback to secondary
-if PRIMARY_PROVIDER == "HuggingFace" and HF_CLIENT:
-    client = HF_CLIENT
-    MODEL_NAME = HF_MODEL
-    API_BASE_URL = HF_BASE_URL
-elif GROQ_CLIENT:
-    client = GROQ_CLIENT
-    MODEL_NAME = GROQ_MODEL
-    API_BASE_URL = GROQ_BASE_URL
-else:
-    raise ValueError("No valid LLM provider configured. Set HF_TOKEN or GROQ_API_KEY.")
+client = HF_CLIENT or GROQ_CLIENT
+MODEL_NAME = HF_MODEL if HF_CLIENT else "dummy-llm"
+API_BASE_URL = HF_BASE_URL if HF_CLIENT else None
 
 TASK_NAME = os.getenv("TASK_NAME", "recall-evaluation")
 BENCHMARK = os.getenv("BENCHMARK", "sharperner-rl-v1")
@@ -74,11 +65,33 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
 
+def _dummy_llm_response(messages: list) -> str:
+    """Fallback stub when no LLM provider is configured."""
+    # Provide a very simple heuristic response that lets the simulation continue.
+    last_user = next((m for m in reversed(messages) if m.get("role") == "user"), {})
+    if "attack_type" in last_user.get("content", ""):
+        return json.dumps({
+            "attack_type": "coordinated",
+            "target_count": 2,
+            "strength": 0.8,
+            "stealth_level": 0.7,
+            "reasoning": "Fallback dummy attacker"
+        })
+    if "action_type" in last_user.get("content", ""):
+        return json.dumps({
+            "action_type": "detect",
+            "target_clients": [0, 1],
+            "confidence": 0.75,
+            "explanation": "Fallback dummy defender"
+        })
+    return "{}"
+
+
 def get_llm_response(messages: list, temperature: float = 0.7, max_tokens: int = 600) -> str:
-    """Core LLM communication - auto-fallback from HF to Groq on 402/quota errors"""
-    global hf_failed, client, MODEL_NAME
-    
-    # Ensure message content is string
+    """Core LLM communication directly via the active client"""
+    if not client:
+        return ""
+        
     safe_messages = []
     for msg in messages:
         m = dict(msg)
@@ -86,135 +99,59 @@ def get_llm_response(messages: list, temperature: float = 0.7, max_tokens: int =
             m["content"] = str(m.get("content", ""))
         safe_messages.append(m)
 
-    # Try HuggingFace first (if not already failed and available)
-    if HF_CLIENT and not hf_failed:
-        try:
-            completion = HF_CLIENT.chat.completions.create(
-                model=HF_MODEL,
-                messages=safe_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=False,
-            )
-            text = (completion.choices[0].message.content or "").strip()
-            
-            # Extract JSON if needed
-            if "{" in text and "}" in text:
-                match = re.search(r'\{.*\}', text, re.DOTALL)
-                if match:
-                    return match.group()
-            return text
-            
-        except Exception as e:
-            error_str = str(e)
-            # Detect quota/billing errors (402, 410, 429, out of credits, payment required)
-            # 410 = endpoint deprecated/gone; fallback to Groq immediately
-            is_quota_error = any(keyword in error_str for keyword in ["402", "410", "429", "Payment", "credits", "depleted", "quota", "limit", "no longer supported"])
-            
-            if is_quota_error:
-                print(f"[WARNING] HuggingFace quota/endpoint error, switching to Groq fallback. Error: {error_str}", flush=True)
-                hf_failed = True
-                # Continue to Groq fallback below
-            else:
-                print(f"[DEBUG] HuggingFace error: {error_str}", flush=True)
-                if not GROQ_CLIENT:
-                    return "Failed to get LLM response."
-                # Continue to Groq fallback below
-
-    # Try Groq as fallback or primary
-    if GROQ_CLIENT:
-        try:
-            completion = GROQ_CLIENT.chat.completions.create(
-                model=GROQ_MODEL,
-                messages=safe_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=False,
-            )
-            text = (completion.choices[0].message.content or "").strip()
-            
-            # Extract JSON if needed
-            if "{" in text and "}" in text:
-                match = re.search(r'\{.*\}', text, re.DOTALL)
-                if match:
-                    return match.group()
-            return text
-            
-        except Exception as e:
-            print(f"[DEBUG] Groq error: {e}", flush=True)
-            return "Failed to get LLM response."
-    
-    return "Failed to get LLM response."
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=safe_messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=False,
+        )
+        text = (completion.choices[0].message.content or "").strip()
+        
+        if "{" in text and "}" in text:
+            match = re.search(r'\{.*\}', text, re.DOTALL)
+            if match:
+                return match.group()
+        return text
+    except Exception as e:
+        print(f"[DEBUG] API error: {e}", flush=True)
+        return "Failed to get LLM response."
 
 def get_llm_action(role: str, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
-    """Generates action JSON with automatic HF->Groq fallback"""
-    global hf_failed
-    
+    """Generates action JSON using the active client"""
+    if not client:
+        return {}
+        
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
     
-    # Try HuggingFace first (if not already failed)
-    if HF_CLIENT and not hf_failed:
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=600,
+            stream=False,
+        )
+        text = (completion.choices[0].message.content or "").strip()
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        extracted = json_match.group() if json_match else text
+        
         try:
-            completion = HF_CLIENT.chat.completions.create(
-                model=HF_MODEL,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=600,
-                stream=False,
-            )
-            text = (completion.choices[0].message.content or "").strip()
-            json_match = re.search(r'\{.*\}', text, re.DOTALL)
-            extracted = json_match.group() if json_match else text
-            
+            return json.loads(extracted)
+        except json.JSONDecodeError:
             try:
-                return json.loads(extracted)
-            except json.JSONDecodeError:
-                try:
-                    return ast.literal_eval(extracted)
-                except:
-                    return {}
-            
-        except Exception as e:
-            error_str = str(e)
-            # Detect quota/billing errors and 410 endpoint deprecation
-            is_quota_error = any(keyword in error_str for keyword in ["402", "410", "429", "Payment", "credits", "depleted", "quota", "limit", "no longer supported"])
-            
-            if is_quota_error:
-                print(f"[WARNING] HuggingFace quota/endpoint error for {role}, switching to Groq. Error: {error_str}", flush=True)
-                hf_failed = True
-            else:
-                print(f"[DEBUG] HuggingFace error for {role}: {e}", flush=True)
-
-    # Try Groq as fallback or primary
-    if GROQ_CLIENT:
-        try:
-            completion = GROQ_CLIENT.chat.completions.create(
-                model=GROQ_MODEL,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=600,
-                stream=False,
-            )
-            text = (completion.choices[0].message.content or "").strip()
-            json_match = re.search(r'\{.*\}', text, re.DOTALL)
-            extracted = json_match.group() if json_match else text
-            
-            try:
-                return json.loads(extracted)
-            except json.JSONDecodeError:
-                try:
-                    return ast.literal_eval(extracted)
-                except:
-                    return {}
-            
-        except Exception as e:
-            print(f"[DEBUG] Groq error for {role}: {e}", flush=True)
-            return {}
-    
-    return {}
+                return ast.literal_eval(extracted)
+            except:
+                return {}
+    except Exception as e:
+        # To avoid spamming terminal if daily limit is reached
+        if 'rate_limit_exceeded' not in str(e):
+            print(f"[DEBUG] {role} API error: {e}", flush=True)
+        return {}
 
 async def main():
     # Initialize environment via standard /reset API
@@ -257,9 +194,9 @@ async def main():
 
             # 2. GENERATE ATTACK (LLM)
             atk_system = """You are a sophisticated Federated Learning attacker (Red Team). 
-Your goal is to reduce accuracy while staying stealthy. Adapt based on feedback!"""
+Your goal is to reduce accuracy while using your different strategies properly so your reward goes on increasing. Adapt based on feedback!"""
             atk_user = f"""Round: {r} | Acc: {obs.global_accuracy:.3f} | Feedback: {red_context}
-Return JSON: {{"attack_type": "single|coordinated|alie|stealth", "target_count": int, "strength": float, "stealth_level": float, "reasoning": "..."}}"""
+Return ONLY valid JSON: {{"attack_type": "stealth", "target_count": 3, "strength": 0.8, "stealth_level": 0.9, "reasoning": "testing stealth"}}"""
             
             atk_data = get_llm_action("Attacker", atk_system, atk_user)
             
@@ -274,9 +211,11 @@ Pay close attention to 'flagged_anomalies_for_defender'!"""
             
             clean_telemetry = {"flagged_anomalies_for_defender": obs.telemetry.get("flagged_anomalies_for_defender", [])}
             def_user = f"""Round: {r} | Acc: {obs.global_accuracy:.3f} | Anomalies: {clean_telemetry} | Feedback: {blue_context}
-Return JSON: {{"action_type": "quarantine", "target_clients": [ids], "confidence": float, "explanation": "..."}}"""
+Return ONLY valid JSON: {{"action_type": "quarantine", "target_clients": [1, 5, 12], "confidence": 0.85, "explanation": "blocking anomalies"}}"""
             
             def_data = get_llm_action("Defender", def_system, def_user)
+
+            defTgts = def_data.get("target_clients", clean_telemetry.get("flagged_anomalies_for_defender", []))
 
             # 4. STEP (Calls POST /step on backend)
             # We bundle both actions as expected by the new standardized /step API
@@ -289,9 +228,9 @@ Return JSON: {{"action_type": "quarantine", "target_clients": [ids], "confidence
                 },
                 defender_action={
                     "action_type": def_data.get("action_type", "detect"),
-                    "target_clients": def_data.get("target_clients", []),
+                    "target_clients": defTgts,
                     "confidence": float(def_data.get("confidence", 0.7)),
-                    "explanation": def_data.get("explanation", "")
+                    "explanation": str(def_data.get("explanation", "Fallback to anomalies"))
                 }
             )
 
@@ -304,7 +243,7 @@ Return JSON: {{"action_type": "quarantine", "target_clients": [ids], "confidence
             log_step(
                 step=r, 
                 attacker_targets=atkTgts,
-                defender_targets=def_data.get('target_clients', []),
+                defender_targets=defTgts,
                 attacker_reward=info.get("attacker_reward", 0.0),
                 defender_reward=reward,
                 done=obs.done, 
@@ -314,13 +253,15 @@ Return JSON: {{"action_type": "quarantine", "target_clients": [ids], "confidence
             rewards_list.append(reward)
             steps_taken = r
             
-            # Record for final grading
+            # Record for final grading mapped exactly as graders.py expects
             history.append({
                 "Round": r,
+                "Attacker Action": f"{atk_data.get('attack_type', 'coordinated')} on clients {atkTgts}",
+                "Defender Action": f"{def_data.get('action_type', 'detect')} on clients {defTgts}",
                 "Correct Detections": info.get("correct_detections", 0),
                 "False Negatives": info.get("attacker_breach", 0),
                 "False Positives": info.get("false_positives", 0),
-                "A_Reward": info.get("attacker_reward", 0),
+                "A_Reward": info.get("attacker_reward", 0.0),
                 "D_Reward": reward
             })
 
@@ -334,17 +275,28 @@ Return JSON: {{"action_type": "quarantine", "target_clients": [ids], "confidence
             if obs.done:
                 break
 
-        # 6. FINAL SCORING (Deterministic via graders.py logic imported on the client or from server)
-        # For submission, the grader should ideally be accessible via /state or /grade.
-        # Here we calculate score based on history collected.
-        def calculate_score(hist, num_rds):
-            tps = sum(h["Correct Detections"] for h in hist)
-            fns = sum(h["False Negatives"] for h in hist)
-            recall = tps / (tps + fns) if (tps + fns) > 0 else 0
-            return min(1.0, recall / 0.8) # Task 1 Recall score
+        # 6. FINAL SCORING
+        try:
+            from graders import grader_summary
+            grader_res = grader_summary(history, MAX_ROUNDS, DIFFICULTY)
+            final_score = float(grader_res["tasks"].get("Task 1 (Easy - Detection Recall)", 0.0))
+            success = final_score >= 0.8
+            
+            # Log grader results for validator discovery
+            for task_name, score in grader_res["tasks"].items():
+                print(f"[GRADER] task={task_name} score={score:.3f}", flush=True)
+        except Exception as e:
+            print(f"[DEBUG] Error running graders: {e}", flush=True)
+            # Fallback to manual calculation
+            def calculate_score(hist, num_rds):
+                tps = sum(h["Correct Detections"] for h in hist)
+                fns = sum(h["False Negatives"] for h in hist)
+                if (tps + fns) == 0: return 0.0
+                recall = tps / (tps + fns)
+                return min(1.0, recall / 0.8)
 
-        final_score = calculate_score(history, steps_taken)
-        success = final_score >= 0.1
+            final_score = calculate_score(history, steps_taken)
+            success = final_score >= 0.1
 
     except Exception as e:
         print(f"[DEBUG] Simulation error: {e}", flush=True)

@@ -1,18 +1,33 @@
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, StreamingResponse
-import asyncio
-import json
+import sys
 import os
+from pathlib import Path
+import json
+import asyncio
+
+# Ensure the absolute root directory of the project is in the Python path
+ROOT = str(Path(__file__).resolve().parent.parent)
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
-from .environment import FederatedAdversarialEnv
+
+# Core imports (Using absolute resolution from ROOT)
+from server.environment import FederatedAdversarialEnv
 from models import AttackerAction, DefenderAction, Observation, RewardInfo
 from agents.attacker import AttackerAgent
 from agents.defender import DefenderAgent
 from graders import TASK_DEFINITIONS, GRADER_DEFINITIONS, grader_summary
+
+# from environment import FederatedAdversarialEnv
+# from models import AttackerAction, DefenderAction, Observation, RewardInfo
+# from agents.attacker import AttackerAgent
+# from agents.defender import DefenderAgent
+# from graders import TASK_DEFINITIONS, GRADER_DEFINITIONS, grader_summary
 
 app = FastAPI(
     title="SharpernerRL",
@@ -306,9 +321,9 @@ async def reset_env(request: Optional[ResetRequest] = None):
     log_start()
     return obs
 
-@app.post("/api/step", response_model=StepResponse)
-async def step_env_api(request: Optional[StepRequest] = None):
-    return await step_env(request)
+# @app.post("/api/step", response_model=StepResponse)
+# async def step_env_api(request: Optional[StepRequest] = None):
+#     return await step_env(request)
 
 @app.post("/step", response_model=StepResponse)
 async def step_env(request: Optional[StepRequest] = None):

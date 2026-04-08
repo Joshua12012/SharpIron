@@ -186,7 +186,9 @@ class FederatedAdversarialEnv:
         info = {
             "round": self.current_round,
             "attacker_reason": attacker_reason,
+            "attacker_reward": attacker_reward,
             "defender_reason": defender_reason,
+            "defender_reward": defender_reward,
             "accuracy_drop": accuracy_drop,
             "correct_detections": correct_detections,
             "false_positives": false_positives,
