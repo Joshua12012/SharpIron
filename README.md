@@ -78,7 +78,7 @@ federated_RLAgent/
 ### Manual UI Interaction
 The environment hosts a **Sharperner Dashboard** reachable at `http://localhost:8000/web` when the server is running. 
 
-> [!Dashboard]("Images\dashboard.png")
+![Dashboard Overview](Images/dashboard.png)
 
 
 ---
