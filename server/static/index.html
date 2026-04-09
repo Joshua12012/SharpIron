@@ -1,1520 +1,637 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FL Simulation Arena — SharpernerRL</title>
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700&display=swap"
-    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg0: #080b10;
-      --bg1: #0d1117;
-      --bg2: #131920;
-      --bg3: #1a2230;
-      --border: rgba(255, 255, 255, 0.07);
-      --border-soft: rgba(255, 255, 255, 0.04);
-      --text0: #e8edf5;
-      --text1: #8a9ab5;
-      --text2: #4a5568;
-      --atk: #e05555;
-      --atk-dim: rgba(224, 85, 85, 0.15);
-      --atk-glow: rgba(224, 85, 85, 0.06);
-      --def: #3d9eff;
-      --def-dim: rgba(61, 158, 255, 0.15);
-      --def-glow: rgba(61, 158, 255, 0.06);
-      --node-good: #3ecf8e;
-      --accent: #a78bfa;
-      --server: #c9a84c;
+      --bg0: #000000; --bg1: rgba(10,13,20,0.6); --bg2: rgba(20,25,35,0.4); --bg3: rgba(30,40,55,0.5);
+      --border: rgba(255,255,255,.08); --border-soft: rgba(255,255,255,.04);
+      --text0: #ffffff; --text1: #cbd5e1; --text2: #64748b;
+      --atk: #ff3333; --atk-glow: rgba(255,51,51,.25);
+      --def: #0088ff; --def-glow: rgba(0,136,255,.25);
+      --node-good: #10b981; --accent: #a855f7; --server: #f59e0b;
     }
-
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0
-    }
-
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      background: var(--bg0);
-      color: var(--text0);
-      font-family: 'Syne', sans-serif;
-      overflow: hidden
-    }
-
-    body {
-      display: flex;
-      flex-direction: column
-    }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+    html,body { width:100%; height:100%; background:var(--bg0); color:var(--text0); font-family:'Syne',sans-serif; overflow:hidden }
+    body { display:flex; flex-direction:column }
 
     #topbar {
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      padding: 10px 16px;
-      background: var(--bg1);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      z-index: 10;
-      flex-wrap: wrap
+      display:flex; align-items:center; gap:12px; padding:12px 16px;
+      background:var(--bg1); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); flex-shrink:0; z-index:10;
     }
-
-    .ctrl-group {
-      display: flex;
-      flex-direction: column;
-      gap: 3px
-    }
-
-    .ctrl-label {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: .12em;
-      color: var(--text2);
-      text-transform: uppercase
-    }
-
+    .ctrl-group { display:flex; flex-direction:column; gap:2px }
+    .ctrl-label { font-family:'DM Mono',monospace; font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:.1em }
     .ctrl-input {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text0);
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      padding: 6px 10px;
-      outline: none;
-      transition: border-color .2s;
-      min-width: 0
+      background:var(--bg2); border:1px solid var(--border); border-radius:4px; color:var(--text0);
+      font-family:'DM Mono',monospace; font-size:12px; padding:5px 10px; outline:none;
     }
-
-    .ctrl-input:focus {
-      border-color: rgba(255, 255, 255, .2)
-    }
-
     .ctrl-select {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text0);
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      padding: 6px 22px 6px 10px;
-      outline: none;
-      cursor: pointer;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a5568'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 7px center
+      background:var(--bg2); border:1px solid var(--border); border-radius:4px; color:var(--text0);
+      font-family:'DM Mono',monospace; font-size:12px; padding:5px 20px 5px 10px; cursor:pointer;
+      appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23475569'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 7px center;
     }
-
     .btn {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text1);
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      letter-spacing: .06em;
-      padding: 7px 14px;
-      cursor: pointer;
-      transition: background .15s, color .15s, border-color .15s;
-      white-space: nowrap
+      background:var(--bg2); border:1px solid var(--border); border-radius:4px; color:var(--text1);
+      font-family:'DM Mono',monospace; font-size:11px; padding:6px 12px; cursor:pointer; white-space:nowrap;
     }
+    .btn:hover { background:var(--bg3); color:var(--text0) }
+    .btn-go { border-color:var(--node-good); color:var(--node-good) }
+    .btn-go:hover { background:rgba(16,185,129,.1) }
 
-    .btn:hover {
-      background: var(--bg3);
-      color: var(--text0);
-      border-color: rgba(255, 255, 255, .15)
+    #main { display:flex; flex:1; overflow:hidden; position:relative; flex-direction:row-reverse }
+
+    /* --- SIDE PANEL (Stats + Unified Terminal) --- */
+    #side-panel {
+      width:420px; border-left:1px solid var(--border); background:var(--bg1);
+      backdrop-filter:blur(15px); display:flex; flex-direction:column; padding:16px; gap:16px; overflow:hidden;
     }
+    .panel-section { display:flex; flex-direction:column; gap:8px; min-height:0 }
+    .section-title { font-size:10px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.1em }
 
-    .btn:disabled {
-      opacity: .4;
-      cursor: not-allowed
+    .stat-card-row { display:grid; grid-template-columns:1fr 1fr; gap:8px }
+    .stat-card { background:var(--bg2); border:1px solid var(--border-soft); border-radius:8px; padding:10px; position:relative }
+    .stat-card.atk { border-left:3px solid var(--atk) }
+    .stat-card.def { border-left:3px solid var(--def) }
+    .sc-label { font-family:'DM Mono',monospace; font-size:8px; color:var(--text2); text-transform:uppercase }
+    .sc-val { font-family:'DM Mono',monospace; font-size:16px; font-weight:600; margin:2px 0 }
+
+    /* Unified Terminal */
+    #terminal-wrap { flex:1; display:flex; flex-direction:column; background:var(--bg0); border:1px solid var(--border); border-radius:8px; overflow:hidden }
+    .term-header { background:var(--bg2); padding:6px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border) }
+    .term-dot { width:6px; height:6px; border-radius:50%; background:var(--accent) }
+    #unified-log {
+      flex:1; padding:10px; overflow-y:auto; overflow-x:hidden;
+      scrollbar-width:thin; scrollbar-color:var(--bg3) transparent;
+      display:flex; flex-direction:column; gap:4px;
     }
+    #unified-log::-webkit-scrollbar { width:4px }
+    #unified-log::-webkit-scrollbar-track { background:transparent }
+    #unified-log::-webkit-scrollbar-thumb { background:var(--bg3); border-radius:2px }
 
-    .btn-reset {
-      border-color: rgba(167, 139, 250, .3);
-      color: var(--accent)
+    .log-line { font-family:'DM Mono',monospace; font-size:10px; line-height:1.6; animation:lfade .2s ease; word-break:break-all }
+    .log-tag { display:inline-block; padding:1px 4px; border-radius:3px; margin-right:6px; font-size:8px; font-weight:700 }
+    .tag-atk { background:rgba(255,92,92,.15); color:var(--atk) }
+    .tag-def { background:rgba(77,166,255,.15); color:var(--def) }
+    .tag-sys { background:rgba(139,92,246,.15); color:var(--accent) }
+    @keyframes lfade { from{opacity:0;transform:translateX(-5px)} to{opacity:1;transform:none} }
+
+    /* --- ARENA (Dual Grids) --- */
+    #arena { flex:1; display:flex; flex-direction:column; align-items:center; gap:20px; padding:20px 20px 20px 160px; position:relative; overflow-y:auto; overflow-x:hidden }
+    #packet-canvas { position:absolute; inset:0; pointer-events:none; z-index:5 }
+
+    .grid-container {
+      width:100%; max-width:640px; background:var(--bg2); border:1px solid var(--border);
+      backdrop-filter:blur(10px); border-radius:12px; padding:16px; position:relative;
+      margin-left:20px;
     }
-
-    .btn-reset:hover {
-      background: rgba(167, 139, 250, .1)
+    .grid-title {
+      font-family:'DM Mono',monospace; font-size:10px; color:var(--text1);
+      margin-bottom:12px; display:flex; align-items:center; gap:8px;
     }
+    .grid-title span { padding:2px 6px; border-radius:4px; font-weight:700 }
+    .gt-real { background:var(--atk-glow); color:var(--atk) }
+    .gt-action { background:var(--def-glow); color:var(--def) }
 
-    .btn-go {
-      border-color: rgba(62, 207, 142, .3);
-      color: var(--node-good)
-    }
-
-    .btn-go:hover {
-      background: rgba(62, 207, 142, .08)
-    }
-
-    #round-bar {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 0 4px
-    }
-
-    .round-pip {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      transition: all .4s
-    }
-
-    .round-pip.done {
-      background: var(--accent);
-      border-color: var(--accent)
-    }
-
-    .round-pip.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
-      animation: pip-pulse 1.5s ease infinite
-    }
-
-    @keyframes pip-pulse {
-
-      0%,
-      100% {
-        box-shadow: 0 0 8px var(--accent)
-      }
-
-      50% {
-        box-shadow: 0 0 16px var(--accent)
-      }
-    }
-
-    /* Error banner */
-    #error-banner {
-      display: none;
-      background: rgba(224, 85, 85, .12);
-      border: 1px solid rgba(224, 85, 85, .3);
-      border-radius: 6px;
-      padding: 6px 12px;
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--atk);
-      margin-left: auto;
-      max-width: 380px;
-      text-align: center
-    }
-
-    #error-banner.show {
-      display: block
-    }
-
-    #main {
-      display: grid;
-      grid-template-columns: 200px 1fr 200px;
-      flex: 1;
-      overflow: hidden;
-      position: relative
-    }
-
-    /* ── PANELS ── */
-    .agent-panel {
-      display: flex;
-      flex-direction: column;
-      padding: 14px;
-      border-right: 1px solid var(--border);
-      overflow: hidden;
-      position: relative;
-      transition: background .6s
-    }
-
-    .agent-panel.right {
-      border-right: none;
-      border-left: 1px solid var(--border)
-    }
-
-    .agent-panel.active-atk {
-      background: var(--atk-glow)
-    }
-
-    .agent-panel.active-def {
-      background: var(--def-glow)
-    }
-
-    .agent-panel.dimmed {
-      opacity: .38;
-      filter: saturate(.2)
-    }
-
-    .agent-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px
-    }
-
-    .agent-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      transition: all .4s
-    }
-
-    .dot-atk {
-      background: var(--atk);
-      box-shadow: 0 0 6px var(--atk)
-    }
-
-    .dot-def {
-      background: var(--def);
-      box-shadow: 0 0 6px var(--def)
-    }
-
-    .agent-name {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .1em;
-      text-transform: uppercase
-    }
-
-    .atk-color {
-      color: var(--atk)
-    }
-
-    .def-color {
-      color: var(--def)
-    }
-
-    /* ── AVATAR ── */
-    .avatar-zone {
-      position: relative;
-      height: 114px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 6px;
-      flex-shrink: 0
-    }
-
-    .agent-halo {
-      position: absolute;
-      width: 96px;
-      height: 96px;
-      border-radius: 50%;
-      opacity: 0;
-      transition: opacity .5s;
-      pointer-events: none
-    }
-
-    .halo-atk {
-      background: radial-gradient(circle, rgba(224, 85, 85, .38) 0%, transparent 70%)
-    }
-
-    .halo-def {
-      background: radial-gradient(circle, rgba(61, 158, 255, .38) 0%, transparent 70%)
-    }
-
-    .active-atk .agent-halo,
-    .active-def .agent-halo {
-      opacity: 1
-    }
-
-    .robot-svg {
-      display: block;
-      overflow: visible
-    }
-
-    .status-badge {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      padding: 2px 8px;
-      border-radius: 20px;
-      margin-bottom: 7px;
-      display: inline-block;
-      width: fit-content;
-      transition: all .4s
-    }
-
-    .badge-w {
-      background: var(--atk-dim);
-      color: var(--atk);
-      border: 1px solid rgba(224, 85, 85, .3)
-    }
-
-    .badge-wd {
-      background: var(--def-dim);
-      color: var(--def);
-      border: 1px solid rgba(61, 158, 255, .3)
-    }
-
-    .badge-idle {
-      background: var(--bg2);
-      color: var(--text2);
-      border: 1px solid var(--border)
-    }
-
-    .log-box {
-      background: var(--bg2);
-      border: 1px solid var(--border-soft);
-      border-radius: 6px;
-      padding: 8px;
-      flex: 1;
-      overflow-y: auto;
-      min-height: 65px;
-      max-height: 105px;
-      scrollbar-width: none
-    }
-
-    .log-box::-webkit-scrollbar {
-      display: none
-    }
-
-    .log-line {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      color: var(--text2);
-      line-height: 1.8;
-      animation: lfade .3s ease
-    }
-
-    .log-line.hi {
-      color: var(--text1)
-    }
-
-    .log-line.ah {
-      color: var(--atk)
-    }
-
-    .log-line.dh {
-      color: var(--def)
-    }
-
-    @keyframes lfade {
-      from {
-        opacity: 0;
-        transform: translateY(4px)
-      }
-
-      to {
-        opacity: 1;
-        transform: none
-      }
-    }
-
-    .score-section {
-      margin-top: 7px
-    }
-
-    .score-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 3px
-    }
-
-    .score-key {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--text2)
-    }
-
-    .score-val {
-      font-family: 'DM Mono', monospace;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all .4s
-    }
-
-    .va {
-      color: var(--atk)
-    }
-
-    .vd {
-      color: var(--def)
-    }
-
-    .sbar {
-      height: 3px;
-      background: var(--border);
-      border-radius: 2px;
-      margin-bottom: 7px;
-      overflow: hidden
-    }
-
-    .sbar-fill {
-      height: 100%;
-      border-radius: 2px;
-      transition: width .8s cubic-bezier(.4, 0, .2, 1)
-    }
-
-    .fa {
-      background: var(--atk)
-    }
-
-    .fd {
-      background: var(--def)
-    }
-
-    /* ── ARENA ── */
-    #arena {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      overflow: hidden
-    }
-
-    #particle-canvas {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 3
-    }
-
-    #server-node {
-      position: absolute;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      z-index: 5
-    }
-
-    .server-icon {
-      width: 46px;
-      height: 46px;
-      background: var(--bg2);
-      border: 1px solid rgba(201, 168, 76, .22);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: box-shadow .4s, border-color .4s
-    }
-
-    .server-icon.active {
-      box-shadow: 0 0 22px rgba(201, 168, 76, .32);
-      border-color: rgba(201, 168, 76, .7)
-    }
-
-    .server-label {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--server);
-      opacity: .8
-    }
-
-    #client-grid-wrap {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -42%)
-    }
-
-    #client-grid {
-      display: grid;
-      gap: 8px
+    .client-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(42px, 1fr));
+      gap:12px; justify-items:center
     }
 
     .client-node {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      cursor: pointer;
-      transition: all .3s
+      width:42px; height:42px; border-radius:8px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; position:relative; transition:all .2s;
     }
-
-    .client-node.good {
-      background: rgba(62, 207, 142, .1);
-      border: 1px solid rgba(62, 207, 142, .35)
+    .cn-num {
+      position:absolute; top:-4px; right:-4px; background:var(--bg3);
+      border:1px solid var(--border); border-radius:50%; width:14px; height:14px;
+      font-size:8px; display:flex; align-items:center; justify-content:center; color:var(--text1); font-family:'DM Mono',monospace
     }
+    .client-node.good { border:1px solid rgba(77,166,255,.2) }
+    .client-node.bad { border:1px solid var(--atk); background:var(--atk-glow); animation:pulse-atk 1s infinite alternate }
+    .client-node.quarantine { border:1px solid var(--def); background:var(--def-glow); box-shadow:0 0 10px var(--def-glow) }
+    @keyframes pulse-atk { from{box-shadow:0 0 2px var(--atk)} to{box-shadow:0 0 12px var(--atk)} }
 
-    .client-node.bad {
-      background: rgba(224, 85, 85, .12);
-      border: 1px solid rgba(224, 85, 85, .5);
-      animation: nblink 1.1s ease infinite
+    #server-area { height:160px; display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:10px }
+    /* Complex Server Tower Style */
+    .server-tower {
+      width:64px; height:110px; background:var(--bg2); border:1px solid rgba(245,158,11,.25);
+      border-radius:6px; display:flex; flex-direction:column; overflow:hidden;
+      transition:box-shadow .4s, border-color .4s; position:relative
     }
-
-    .client-node.blocked {
-      background: rgba(61, 158, 255, .1);
-      border: 1px solid rgba(61, 158, 255, .35);
-      animation: none
+    .server-tower.active {
+      box-shadow:0 0 24px rgba(245,158,11,.3); border-color:var(--server)
     }
-
-    @keyframes nblink {
-
-      0%,
-      100% {
-        border-color: rgba(224, 85, 85, .4);
-        background: rgba(224, 85, 85, .1)
-      }
-
-      50% {
-        border-color: rgba(224, 85, 85, 1);
-        background: rgba(224, 85, 85, .28);
-        box-shadow: 0 0 8px rgba(224, 85, 85, .5)
-      }
+    .server-top-strip {
+      background:rgba(245,158,11,.1); border-bottom:1px solid rgba(245,158,11,.2);
+      padding:5px 6px; display:flex; align-items:center; gap:5px
     }
-
-    .node-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      transition: all .3s
+    .srv-pwr { width:6px; height:6px; border-radius:50%; background:rgba(245,158,11,0.2); transition:all .4s }
+    .srv-pwr.on { background:var(--server); box-shadow:0 0 8px var(--server) }
+    .server-disk-row {
+      padding:4px 6px; display:flex; align-items:center; gap:4px; border-bottom:1px solid rgba(245,158,11,.08)
     }
+    .disk-slot { flex:1; height:12px; background:rgba(245,158,11,.06); border-radius:2px; position:relative; overflow:hidden }
+    .disk-bar { position:absolute; left:0; top:0; height:100%; background:rgba(245,158,11,.2); width:0% }
+    .disk-bar.anim { animation:disk-fill 1.2s ease-in-out infinite }
+    @keyframes disk-fill { 0%{width:10%} 50%{width:90%} 100%{width:10%} }
+    .disk-led { width:4px; height:12px; border-radius:1px; background:rgba(245,158,11,.1); flex-shrink:0 }
+    .disk-led.blink { animation:led-blink .6s ease infinite }
+    @keyframes led-blink { 0%,100%{background:rgba(245,158,11,.1)} 50%{background:var(--server); box-shadow:0 0 4px var(--server)} }
 
-    .good .node-dot {
-      background: var(--node-good);
-      box-shadow: 0 0 4px var(--node-good)
+    /* Agent Eyes - Glowing Circles */
+    .agent-eyes {
+      position:absolute; left:-110px; top:50%; transform:translateY(-50%);
+      display:flex; gap:24px; opacity:0; transition:all .8s ease;
+      z-index:10; pointer-events:none;
     }
-
-    .bad .node-dot {
-      background: var(--atk)
+    .agent-eyes.active { opacity:1; left:-90px }
+    .eye { 
+      width:16px; height:16px; border-radius:50%; 
+      background:var(--color); filter:blur(0.5px); 
+      box-shadow:0 0 25px var(--color), 0 0 50px var(--color); 
+      animation:eye-pulse 2s infinite alternate;
     }
-
-    .blocked .node-dot {
-      background: var(--def)
-    }
-
-    #packets-layer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 4
-    }
-
-    .packet {
-      position: absolute;
-      border-radius: 50%;
-      width: 5px;
-      height: 5px;
-      animation: fup 1.3s ease-in forwards
-    }
-
-    .packet.clean {
-      background: var(--node-good);
-      box-shadow: 0 0 5px var(--node-good)
-    }
-
-    .packet.poison {
-      background: var(--atk);
-      box-shadow: 0 0 5px var(--atk)
-    }
-
-    @keyframes fup {
-      0% {
-        opacity: 1;
-        transform: translateY(0) scale(1)
-      }
-
-      80% {
-        opacity: .7
-      }
-
-      100% {
-        opacity: 0;
-        transform: translateY(-110px) scale(.3)
-      }
-    }
-
-    #center-hud {
-      position: absolute;
-      bottom: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 7px;
-      width: 240px;
-      z-index: 5
-    }
-
-    .hud-stat-row {
-      display: flex;
-      gap: 8px;
-      width: 100%
-    }
-
-    .hud-stat {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 5px 10px;
-      text-align: center;
-      flex: 1
-    }
-
-    .hud-stat-val {
-      font-family: 'DM Mono', monospace;
-      font-size: 15px;
-      font-weight: 500;
-      color: var(--text0)
-    }
-
-    .hud-stat-key {
-      font-family: 'DM Mono', monospace;
-      font-size: 8px;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--text2);
-      margin-top: 1px
-    }
-
-    .slider-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%
-    }
-
-    .slider-row label {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--text2);
-      white-space: nowrap
-    }
-
-    input[type=range] {
-      flex: 1;
-      -webkit-appearance: none;
-      height: 3px;
-      background: var(--bg3);
-      border-radius: 2px;
-      outline: none
-    }
-
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--text0);
-      cursor: pointer
-    }
-
-    .slider-val {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--text1);
-      min-width: 22px;
-      text-align: right
+    @keyframes eye-pulse { 
+      0%{transform:scale(0.8); opacity:0.7} 
+      100%{transform:scale(1.1); opacity:1} 
     }
 
     #phase-banner {
-      position: absolute;
-      top: 66px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      color: var(--text2);
-      background: var(--bg1);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 3px 12px;
-      white-space: nowrap;
-      z-index: 5;
-      transition: color .4s, border-color .4s
+      font-family:'DM Mono',monospace; font-size:11px; padding:4px 16px;
+      border-radius:20px; background:var(--bg3); border:1px solid var(--border);
+      text-transform:uppercase; letter-spacing:.1em;
     }
 
-    #phase-banner.pa {
-      color: var(--atk);
-      border-color: rgba(224, 85, 85, .3)
+    /* Overlays (Removed heavy blurs) */
+    .overlay-base {
+      position:absolute; inset:0; background:rgba(6,8,12,.9);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100; padding:40px
     }
+    .ov-card {
+      background:var(--bg1); border:1px solid var(--border); border-radius:16px; padding:32px;
+      max-width:480px; width:100%; text-align:center;
+    }
+    .ov-title { font-size:24px; font-weight:700; color:var(--text0); margin-bottom:16px }
+    .ov-text { font-size:14px; color:var(--text1); line-height:1.6; margin-bottom:24px }
+    .intro-step { display:none }
+    .intro-step.active { display:block }
 
-    #phase-banner.pd {
-      color: var(--def);
-      border-color: rgba(61, 158, 255, .3)
-    }
-
-    #phase-banner.pg {
-      color: var(--server);
-      border-color: rgba(201, 168, 76, .3)
-    }
-
-    #round-badge {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      letter-spacing: .06em;
-      color: var(--text1);
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 4px 12px;
-      z-index: 6;
-      display: flex;
-      align-items: center;
-      gap: 8px
-    }
-
-    .rdot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--accent)
-    }
-
-    /* Loading spinner overlay within arena */
-    #loading-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(8, 11, 16, .7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 20;
-      backdrop-filter: blur(2px)
-    }
-
-    #loading-overlay.show {
-      display: flex
-    }
-
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .7s linear infinite
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg)
-      }
-    }
-
-    #start-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(8, 11, 16, .88);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      z-index: 20;
-      backdrop-filter: blur(4px);
-      transition: opacity .5s
-    }
-
-    #start-overlay.hidden {
-      opacity: 0;
-      pointer-events: none
-    }
-
-    .ov-title {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: .04em;
-      color: var(--text0)
-    }
-
-    .ov-sub {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--text2);
-      text-align: center;
-      max-width: 280px;
-      line-height: 1.7
-    }
-
-    .btn-ov {
-      background: var(--bg2);
-      border: 1px solid rgba(167, 139, 250, .4);
-      border-radius: 8px;
-      color: var(--accent);
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      letter-spacing: .08em;
-      padding: 10px 28px;
-      cursor: pointer;
-      transition: all .2s
-    }
-
-    .btn-ov:hover {
-      background: rgba(167, 139, 250, .12);
-      border-color: var(--accent)
-    }
+    #loading-overlay { background:rgba(6,8,12,.6); z-index:200 }
+    .spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite }
+    @keyframes spin { to{transform:rotate(360deg)} }
 
     #toast {
-      position: fixed;
-      bottom: 18px;
-      left: 50%;
-      transform: translateX(-50%) translateY(60px);
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 18px;
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--text1);
-      z-index: 100;
-      transition: transform .3s cubic-bezier(.4, 0, .2, 1);
-      pointer-events: none
+      position:fixed; bottom:20px; right:20px; background:var(--bg2); border:1px solid var(--border);
+      padding:10px 20px; border-radius:8px; font-size:12px; transform:translateY(100px); transition:transform .3s; z-index:1000
     }
+    #toast.show { transform:translateY(0) }
 
-    #toast.show {
-      transform: translateX(-50%) translateY(0)
-    }
-
-    /* API key mode toggle */
-    .key-row {
-      display: flex;
-      gap: 6px;
-      align-items: center
-    }
-
-    .model-badge {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      color: var(--text2);
-      padding: 3px 8px;
-      border: 1px solid var(--border);
-      border-radius: 4px
-    }
+    .key-row { display:flex; gap:6px; align-items:center }
   </style>
 </head>
-
 <body>
 
-  <div id="topbar">
-    <div class="ctrl-group" style="flex:1;max-width:320px">
-      <span class="ctrl-label">Groq API Key (runs real LLM agents)</span>
-      <div class="key-row">
-        <input id="api-key-input" class="ctrl-input" type="password" placeholder="gsk_••••••••••••••••••••"
-          style="flex:1" autocomplete="off" />
-        <button class="btn" onclick="toggleKey()" title="Show/hide key">⊙</button>
-      </div>
+<div id="intro-overlay" class="overlay-base">
+  <div class="ov-card">
+    <div class="intro-step active" id="step-1">
+      <div class="ov-title">Welcome to the FL Arena</div>
+      <div class="ov-text">In this simulation, you'll witness a Federated Learning system under attack. Real LLM agents act as both the <b>Attacker</b> and the <b>Defender</b>.</div>
+      <button class="btn btn-go" onclick="nextIntro(1)">Continue</button>
     </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Model</span>
-      <select class="ctrl-select" id="model-select" style="width:170px">
-        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
-        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
-        <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
-      </select>
+    <div class="intro-step" id="step-2">
+      <div class="ov-title">Ground Truth vs Observation</div>
+      <div class="ov-text">The <b>Top Grid</b> shows the real state of the clients (who is truly poisoned). The <b>Bottom Grid</b> shows the Defender's detections and quarantines.</div>
+      <button class="btn btn-go" onclick="nextIntro(2)">Continue</button>
     </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Difficulty</span>
-      <select class="ctrl-select" id="difficulty-select" style="width:106px">
-        <option value="easy">Easy</option>
-        <option value="medium" selected>Medium</option>
-        <option value="hard">Hard</option>
-        <option value="extreme">Extreme</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Rounds</span>
-      <select class="ctrl-select" id="rounds-select" style="width:68px">
-        <option>5</option>
-        <option selected>10</option>
-        <option>15</option>
-        <option>20</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Progress</span>
-      <div id="round-bar"></div>
-    </div>
-
-    <!-- NewZDocs Button -->
-    <button class="btn btn-docs" onclick="window.open('/docs', '_blank')" style="margin-left:auto; margin-bottom:2px;">
-      📘 API Docs (Swagger)
-    </button>
-    <div id="error-banner"></div>
-    <div style="display:flex;gap:6px;align-items:flex-end;padding-bottom:1px;margin-left:auto">
-      <button class="btn btn-go" id="start-btn" onclick="startSimulation()">▶ Start</button>
-      <button class="btn btn-reset" onclick="resetAll()">↺ Reset</button>
+    <div class="intro-step" id="step-3">
+      <div class="ov-title">Real LLM Intelligence</div>
+      <div class="ov-text">Every round, the agents reason using your Groq API key. You can see their detailed logs in the terminal on the left.</div>
+      <button class="btn btn-go" onclick="nextIntro(3)">Enter Pipeline</button>
     </div>
   </div>
+</div>
 
-  <div id="main">
+<div id="start-overlay" class="overlay-base" style="display:none">
+  <div class="ov-card">
+    <div class="ov-title">System Ready</div>
+    <div class="ov-text">Please ensure your Groq API key is entered in the top bar. Configure your environment and model choice below.</div>
+    <button class="btn btn-go" style="width:100%;padding:14px" onclick="closeStartOverlay()">Access Dashboard</button>
+  </div>
+</div>
 
-    <!-- ATTACK AGENT LEFT -->
-    <div class="agent-panel dimmed" id="atk-panel">
-      <div class="agent-header">
-        <div class="agent-dot dot-atk"></div>
-        <span class="agent-name atk-color">Attack Agent</span>
-      </div>
-      <div class="avatar-zone">
-        <div class="agent-halo halo-atk"></div>
-        <svg class="robot-svg" width="80" height="108" viewBox="0 0 80 108">
-          <line x1="40" y1="5" x2="40" y2="16" stroke="#e05555" stroke-width="1.5" stroke-linecap="round"
-            opacity=".6" />
-          <circle cx="40" cy="4" r="3.5" fill="#e05555" id="ak-ant" opacity=".5" />
-          <g id="ak-head" style="transform-origin:40px 31px;transition:transform .65s cubic-bezier(.4,0,.2,1)">
-            <rect x="18" y="15" width="44" height="34" rx="8" fill="#130b0b" stroke="#e05555" stroke-width="1.1"
-              opacity=".9" />
-            <rect x="23" y="23" width="34" height="11" rx="3" fill="#1e0808" stroke="rgba(224,85,85,.25)"
-              stroke-width=".5" />
-            <ellipse cx="31" cy="28.5" rx="5" ry="5" fill="#e05555" id="ak-eya" opacity=".08" />
-            <ellipse cx="49" cy="28.5" rx="5" ry="5" fill="#e05555" id="ak-eyb" opacity=".08" />
-            <circle cx="31" cy="28.5" r="2.5" fill="#e05555" id="ak-pa" opacity=".2" />
-            <circle cx="49" cy="28.5" r="2.5" fill="#e05555" id="ak-pb" opacity=".2" />
-            <path d="M25 22 L37 22" stroke="rgba(224,85,85,.2)" stroke-width=".8" stroke-linecap="round" />
-            <path d="M43 22 L55 22" stroke="rgba(224,85,85,.2)" stroke-width=".8" stroke-linecap="round" />
-            <path d="M28 40 Q40 44.5 52 40" fill="none" stroke="rgba(224,85,85,.25)" stroke-width="1"
-              stroke-linecap="round" />
-            <rect x="11" y="22" width="7" height="9" rx="2.5" fill="#130b0b" stroke="#e05555" stroke-width=".8"
-              opacity=".7" />
-            <rect x="62" y="22" width="7" height="9" rx="2.5" fill="#130b0b" stroke="#e05555" stroke-width=".8"
-              opacity=".7" />
-          </g>
-          <rect x="34" y="49" width="12" height="7" rx="2" fill="#0e0808" stroke="rgba(224,85,85,.2)"
-            stroke-width=".8" />
-          <rect x="12" y="56" width="56" height="38" rx="9" fill="#120808" stroke="#e05555" stroke-width="1"
-            opacity=".85" />
-          <rect x="21" y="63" width="38" height="22" rx="4" fill="#1c0808" stroke="rgba(224,85,85,.18)"
-            stroke-width=".5" />
-          <circle cx="31" cy="72" r="3.5" fill="#e05555" id="ak-c1" opacity=".15" />
-          <circle cx="40" cy="72" r="3.5" fill="#e05555" id="ak-c2" opacity=".15" />
-          <circle cx="49" cy="72" r="3.5" fill="#e05555" id="ak-c3" opacity=".15" />
-          <rect x="28" y="79" width="24" height="2" rx="1" fill="rgba(224,85,85,.12)" />
-          <rect x="3" y="58" width="9" height="26" rx="4" fill="#120808" stroke="rgba(224,85,85,.28)"
-            stroke-width=".8" />
-          <rect x="68" y="58" width="9" height="26" rx="4" fill="#120808" stroke="rgba(224,85,85,.28)"
-            stroke-width=".8" />
-          <rect x="19" y="93" width="15" height="13" rx="4" fill="#120808" stroke="rgba(224,85,85,.22)"
-            stroke-width=".8" />
-          <rect x="46" y="93" width="15" height="13" rx="4" fill="#120808" stroke="rgba(224,85,85,.22)"
-            stroke-width=".8" />
-        </svg>
-      </div>
-      <div class="status-badge badge-idle" id="atk-badge">Standby</div>
-      <div class="log-box" id="atk-log">
-        <div class="log-line">Awaiting simulation…</div>
-      </div>
-      <div class="score-section">
-        <div class="score-row"><span class="score-key">Atk Reward</span><span class="score-val va"
-            id="atk-dmg">0.00</span></div>
-        <div class="sbar">
-          <div class="sbar-fill fa" id="atk-dmg-bar" style="width:0%"></div>
+<div id="topbar">
+  <div class="ctrl-group" style="flex:1;max-width:320px">
+    <span class="ctrl-label">Groq API Key</span>
+    <div class="key-row">
+      <input id="api-key-input" class="ctrl-input" type="password" placeholder="gsk_••••" style="flex:1" autocomplete="off"/>
+      <button class="btn" onclick="toggleKey()">⊙</button>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Model</span>
+    <select class="ctrl-select" id="model-select">
+      <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+      <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+      <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Complexity</span>
+    <select class="ctrl-select" id="difficulty-select">
+      <option value="easy">Easy (10% Atk)</option>
+      <option value="medium" selected>Medium (25% Atk)</option>
+      <option value="hard">Hard (40% Atk)</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Clients</span>
+    <select class="ctrl-select" id="client-select" onchange="updateClientCount(this.value)">
+      <option value="8">8 Nodes</option>
+      <option value="12" selected>12 Nodes</option>
+      <option value="16">16 Nodes</option>
+      <option value="20">20 Nodes</option>
+      <option value="24">24 Nodes</option>
+    </select>
+  </div>
+  <button class="btn btn-go" id="start-btn" onclick="startSimulation()">▶ Start Sim</button>
+  <button class="btn" onclick="resetAll()">↺ Reset</button>
+  <button class="btn" onclick="window.open('/docs','_blank')">📘 Docs</button>
+</div>
+
+<div id="main">
+  <div id="arena">
+    <canvas id="packet-canvas"></canvas>
+
+    <div id="server-area">
+      <div class="server-tower" id="server-tower">
+        <div class="server-top-strip">
+          <div class="srv-pwr" id="srv-pwr"></div>
+          <span style="font-family:'DM Mono',monospace; font-size:7px; color:rgba(245,158,11,.6)">FL-SRV-01</span>
         </div>
-        <div class="score-row"><span class="score-key">Nodes Breached</span><span class="score-val va"
-            id="atk-comp">0</span></div>
-        <div class="sbar">
-          <div class="sbar-fill fa" id="atk-comp-bar" style="width:0%"></div>
+        <div class="server-disk-row">
+          <div class="disk-slot"><div class="disk-bar" id="disk-bar-0"></div></div>
+          <div class="disk-led" id="disk-led-0"></div>
         </div>
-        <div class="score-row"><span class="score-key">Rounds Won</span><span class="score-val va"
-            id="atk-wins">0</span></div>
+        <div class="server-disk-row">
+          <div class="disk-slot"><div class="disk-bar" id="disk-bar-1"></div></div>
+          <div class="disk-led" id="disk-led-1"></div>
+        </div>
+        <div class="server-disk-row">
+          <div class="disk-slot"><div class="disk-bar" id="disk-bar-2"></div></div>
+          <div class="disk-led" id="disk-led-2"></div>
+        </div>
+        <div class="server-disk-row" style="border:none">
+          <div class="disk-slot"><div class="disk-bar" id="disk-bar-3"></div></div>
+          <div class="disk-led" id="disk-led-3"></div>
+        </div>
+      </div>
+      <div id="phase-banner">Waiting for Start</div>
+    </div>
+
+    <!-- GROUND TRUTH BOX -->
+    <div class="grid-container">
+      <div class="grid-title">
+        <span class="gt-real">GROUND TRUTH</span>
+        REAL-TIME STATUS OF ALL CLIENT NODES IN THE NETWORK
+      </div>
+      <div class="agent-eyes" id="atk-eyes">
+        <div class="eye" style="--color:var(--atk)"></div>
+        <div class="eye" style="--color:var(--atk)"></div>
+      </div>
+      <div class="client-grid" id="real-grid"></div>
+    </div>
+
+    <div class="grid-container">
+      <div class="grid-title">
+        <span class="gt-action">DEFENDER OVERVIEW</span>
+        NODES IDENTIFIED AND QUARANTINED BY THE DETECTION AGENT
+      </div>
+      <div class="agent-eyes" id="def-eyes">
+        <div class="eye" style="--color:var(--def)"></div>
+        <div class="eye" style="--color:var(--def)"></div>
+      </div>
+      <div class="client-grid" id="action-grid"></div>
+    </div>
+
+    <div id="loading-overlay" class="overlay-base" style="display:none"><div class="spinner"></div></div>
+  </div>
+
+  <div id="side-panel">
+    <div class="panel-section">
+      <span class="section-title">Performance Monitor</span>
+      <div class="stat-card-row">
+        <div class="stat-card atk">
+          <span class="sc-label">Breaches</span>
+          <div class="sc-val" id="atk-comp">0</div>
+        </div>
+        <div class="stat-card def">
+          <span class="sc-label">Blocked</span>
+          <div class="sc-val" id="def-blocked">0</div>
+        </div>
       </div>
     </div>
 
-    <!-- CENTER ARENA -->
-    <div id="arena">
-      <canvas id="particle-canvas"></canvas>
-      <div id="round-badge">
-        <div class="rdot"></div><span id="round-label">Round — / —</span>
-      </div>
-      <div id="server-node">
-        <div class="server-icon" id="server-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="3" width="20" height="6" rx="2" stroke="#c9a84c" stroke-width="1.1" />
-            <rect x="2" y="11" width="20" height="6" rx="2" stroke="#c9a84c" stroke-width="1.1" />
-            <circle cx="18" cy="6" r="1.2" fill="#c9a84c" />
-            <circle cx="18" cy="14" r="1.2" fill="#c9a84c" />
-            <path d="M12 20v-3M9 20h6" stroke="#c9a84c" stroke-width="1.1" stroke-linecap="round" />
-          </svg>
+    <div class="panel-section">
+      <span class="section-title">Detection Intelligence</span>
+      <div class="stat-card-row">
+        <div class="stat-card" style="border-left:3px solid var(--server)">
+          <span class="sc-label">False Positives</span>
+          <div class="sc-val" id="det-fp">0</div>
         </div>
-        <span class="server-label">FL Server</span>
-      </div>
-      <div id="phase-banner">Idle</div>
-      <div id="client-grid-wrap">
-        <div id="client-grid"></div>
-      </div>
-      <div id="packets-layer"></div>
-      <div id="center-hud">
-        <div class="hud-stat-row">
-          <div class="hud-stat">
-            <div class="hud-stat-val" id="hud-poisoned">0</div>
-            <div class="hud-stat-key">Poisoned</div>
-          </div>
-          <div class="hud-stat">
-            <div class="hud-stat-val" id="hud-acc">0.85</div>
-            <div class="hud-stat-key">Accuracy</div>
-          </div>
-          <div class="hud-stat">
-            <div class="hud-stat-val" id="hud-blocked">0</div>
-            <div class="hud-stat-key">Blocked</div>
-          </div>
+        <div class="stat-card" style="border-left:3px solid var(--atk)">
+          <span class="sc-label">Total Missed</span>
+          <div class="sc-val" id="det-fn">0</div>
         </div>
-        <div class="slider-row">
-          <label>Clients</label>
-          <input type="range" id="client-slider" min="4" max="25" value="12" step="1"
-            oninput="updateClientCount(this.value)" />
-          <span class="slider-val" id="client-count-label">12</span>
-        </div>
-      </div>
-      <div id="loading-overlay">
-        <div class="spinner"></div>
-      </div>
-      <div id="start-overlay">
-        <div class="ov-title">FL Simulation Arena</div>
-        <div class="ov-sub">Paste your Groq API key above, configure settings, then start.<br><br>The simulation runs
-          real LLM agents against your backend environment — every round is a genuine adversarial step.</div>
-        <button class="btn-ov" onclick="startSimulation()">Begin Simulation</button>
       </div>
     </div>
 
-    <!-- DEFENSE AGENT RIGHT -->
-    <div class="agent-panel right dimmed" id="def-panel">
-      <div class="agent-header">
-        <div class="agent-dot dot-def"></div>
-        <span class="agent-name def-color">Detection Agent</span>
-      </div>
-      <div class="avatar-zone">
-        <div class="agent-halo halo-def"></div>
-        <svg class="robot-svg" width="80" height="108" viewBox="0 0 80 108">
-          <line x1="40" y1="5" x2="40" y2="16" stroke="#3d9eff" stroke-width="1.5" stroke-linecap="round"
-            opacity=".6" />
-          <circle cx="40" cy="4" r="3.5" fill="#3d9eff" id="dk-ant" opacity=".5" />
-          <g id="dk-head" style="transform-origin:40px 31px;transition:transform .65s cubic-bezier(.4,0,.2,1)">
-            <rect x="18" y="15" width="44" height="34" rx="8" fill="#090f1c" stroke="#3d9eff" stroke-width="1.1"
-              opacity=".9" />
-            <rect x="23" y="23" width="34" height="11" rx="3" fill="#06101e" stroke="rgba(61,158,255,.25)"
-              stroke-width=".5" />
-            <ellipse cx="31" cy="28.5" rx="5" ry="5" fill="#3d9eff" id="dk-eya" opacity=".08" />
-            <ellipse cx="49" cy="28.5" rx="5" ry="5" fill="#3d9eff" id="dk-eyb" opacity=".08" />
-            <circle cx="31" cy="28.5" r="2.5" fill="#3d9eff" id="dk-pa" opacity=".2" />
-            <circle cx="49" cy="28.5" r="2.5" fill="#3d9eff" id="dk-pb" opacity=".2" />
-            <path d="M25 22 L37 22" stroke="rgba(61,158,255,.2)" stroke-width=".8" stroke-linecap="round" />
-            <path d="M43 22 L55 22" stroke="rgba(61,158,255,.2)" stroke-width=".8" stroke-linecap="round" />
-            <path d="M28 40 Q40 36 52 40" fill="none" stroke="rgba(61,158,255,.3)" stroke-width="1"
-              stroke-linecap="round" />
-            <rect x="11" y="22" width="7" height="9" rx="2.5" fill="#090f1c" stroke="#3d9eff" stroke-width=".8"
-              opacity=".7" />
-            <rect x="62" y="22" width="7" height="9" rx="2.5" fill="#090f1c" stroke="#3d9eff" stroke-width=".8"
-              opacity=".7" />
-          </g>
-          <rect x="34" y="49" width="12" height="7" rx="2" fill="#060d1a" stroke="rgba(61,158,255,.2)"
-            stroke-width=".8" />
-          <rect x="12" y="56" width="56" height="38" rx="9" fill="#060d16" stroke="#3d9eff" stroke-width="1"
-            opacity=".85" />
-          <rect x="21" y="63" width="38" height="22" rx="4" fill="#04091a" stroke="rgba(61,158,255,.18)"
-            stroke-width=".5" />
-          <circle cx="31" cy="72" r="3.5" fill="#3d9eff" id="dk-c1" opacity=".15" />
-          <circle cx="40" cy="72" r="3.5" fill="#3d9eff" id="dk-c2" opacity=".15" />
-          <circle cx="49" cy="72" r="3.5" fill="#3d9eff" id="dk-c3" opacity=".15" />
-          <rect x="28" y="79" width="24" height="2" rx="1" fill="rgba(61,158,255,.12)" />
-          <rect x="3" y="58" width="9" height="26" rx="4" fill="#060d16" stroke="rgba(61,158,255,.28)"
-            stroke-width=".8" />
-          <rect x="68" y="58" width="9" height="26" rx="4" fill="#060d16" stroke="rgba(61,158,255,.28)"
-            stroke-width=".8" />
-          <rect x="19" y="93" width="15" height="13" rx="4" fill="#060d16" stroke="rgba(61,158,255,.22)"
-            stroke-width=".8" />
-          <rect x="46" y="93" width="15" height="13" rx="4" fill="#060d16" stroke="rgba(61,158,255,.22)"
-            stroke-width=".8" />
-        </svg>
-      </div>
-      <div class="status-badge badge-idle" id="def-badge">Standby</div>
-      <div class="log-box" id="def-log">
-        <div class="log-line">Awaiting simulation…</div>
-      </div>
-      <div class="score-section">
-        <div class="score-row"><span class="score-key">Def Reward</span><span class="score-val vd"
-            id="def-prot">0.00</span></div>
-        <div class="sbar">
-          <div class="sbar-fill fd" id="def-prot-bar" style="width:0%"></div>
+    <div class="panel-section" style="flex:1">
+      <span class="section-title">Unified Intelligent Terminal</span>
+      <div id="terminal-wrap">
+        <div class="term-header">
+          <div class="term-dot"></div>
+          <span class="ctrl-label">Live Agent Reasoning</span>
         </div>
-        <div class="score-row"><span class="score-key">Threats Blocked</span><span class="score-val vd"
-            id="def-blocked">0</span></div>
-        <div class="sbar">
-          <div class="sbar-fill fd" id="def-blocked-bar" style="width:0%"></div>
-        </div>
-        <div class="score-row"><span class="score-key">Rounds Won</span><span class="score-val vd"
-            id="def-wins">0</span></div>
+        <div id="unified-log"></div>
       </div>
     </div>
   </div>
+</div>
 
-  <div id="toast"></div>
+<script>
+  const BASE_URL = window.location.origin;
 
-  <script>
-    // ── CONFIG ─────────────────────────────────────────────────────────────────
-    // Auto-detect if we're running from the same origin as the server
-    const BASE_URL = window.location.origin;
+  const S = {
+    running:false, round:0, totalRounds:10, clientCount:12, difficulty:'medium', 
+    atkScore:{dmg:0,comp:0,wins:0}, defScore:{prot:0,blocked:0,wins:0},
+    poisonedNodes:[], investigatedNodes:[], totalDetections:0, totalBreaches:0, totalFalsePositives:0
+  };
 
-    // ── STATE ──────────────────────────────────────────────────────────────────
-    const S = {
-      running: false, round: 0, totalRounds: 10, clientCount: 12, difficulty: 'medium', phase: 'idle',
-      atkScore: { dmg: 0, comp: 0, wins: 0 }, defScore: { prot: 0, blocked: 0, wins: 0 }, nodes: [],
-      poisonedNodes: [], totalDetections: 0, totalBreaches: 0
-    };
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+  function I(id){ return document.getElementById(id) }
 
-    const rand = (a, b) => Math.random() * (b - a) + a;
-    const pick = a => a[Math.floor(Math.random() * a.length)];
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
-    function I(id) { return document.getElementById(id) }
+  // ── PC SVG ICON WITH NUMBER ────────────────────────────────────────────────
+  function pcIconSVG(color, num) {
+    return `<svg class="pc-icon" viewBox="0 0 22 22" fill="none">
+      <rect x="2" y="2" width="18" height="12" rx="2" stroke="${color}" stroke-width="1.2" fill="${color}10"/>
+      <rect x="4" y="4" width="14" height="8" rx="1" fill="${color}08"/>
+      <rect x="10" y="14" width="2" height="3" fill="${color}44"/>
+      <rect x="6" y="17" width="10" height="1.5" rx="1" fill="${color}22"/>
+      <text x="11" y="9" font-family="monospace" font-size="6" fill="${color}" text-anchor="middle" font-weight="bold">${num}</text>
+    </svg>`;
+  }
 
-    // ── PARTICLE ENGINE ────────────────────────────────────────────────────────
-    let particles = [], animFrame = null, particleOn = false;
-    const canvas = I('particle-canvas'), ctx = canvas.getContext('2d');
+  function nextIntro(current) {
+    I(`step-${current}`).classList.remove('active');
+    const next = I(`step-${current+1}`);
+    if (next) next.classList.add('active');
+    else {
+      I('intro-overlay').style.display = 'none';
+      I('start-overlay').style.display = 'flex';
+    }
+  }
+  function closeStartOverlay() { I('start-overlay').style.display = 'none'; }
 
-    function resizeCanvas() { const a = I('arena'); canvas.width = a.offsetWidth; canvas.height = a.offsetHeight }
-    function spawnParticles() {
-      if (!particleOn) return;
-      const arena = I('arena').getBoundingClientRect();
-      S.nodes.forEach((n, i) => {
-        const el = I(`node-${i}`); if (!el) return;
-        const nr = el.getBoundingClientRect();
-        const cx = nr.left - arena.left + nr.width / 2, cy = nr.top - arena.top + nr.height / 2;
-        const poison = n.poisoned && !n.blocked, blocked = n.blocked;
-        const color = poison ? '#e05555' : blocked ? '#3d9eff' : '#3ecf8e';
-        const chance = poison ? .45 : blocked ? .2 : .18;
-        if (Math.random() > chance) return;
-        const count = poison ? Math.ceil(Math.random() * 2) : 1;
-        for (let k = 0; k < count; k++) {
-          const angle = Math.random() * Math.PI * 2;
-          const spd = .25 + Math.random() * .55;
-          particles.push({
-            x: cx, y: cy, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd - .5,
-            life: 1, decay: .013 + Math.random() * .013, r: 1 + Math.random() * 1.6, color
-          });
+  // ── UNIFIED TERMINAL ───────────────────────────────────────────────────────
+  function addLog(text, tag='sys') {
+    const el = I('unified-log');
+    if (!el) return;
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    const tagClass = tag === 'atk' ? 'tag-atk' : tag === 'def' ? 'tag-def' : 'tag-sys';
+    div.innerHTML = `<span class="log-tag ${tagClass}">${tag.toUpperCase()}</span>${text}`;
+    el.appendChild(div);
+    if(el.children.length > 100) el.removeChild(el.firstChild);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  async function addLogChunked(text, tag='sys') {
+    if (!text) return;
+    const chunks = text.match(/.{1,65}(\s|$)/g) || [text];
+    for(const c of chunks) {
+      addLog(c.trim(), tag);
+      await sleep(150);
+    }
+  }
+
+  // ── SERVER TOWER ANIMATIONS ────────────────────────────────────────────────
+  function activateServerTower(on) {
+    const tower = I('server-tower'), pwr = I('srv-pwr');
+    if (on) {
+      tower.classList.add('active'); pwr.classList.add('on');
+      for(let i=0; i<4; i++) {
+        const bar = I(`disk-bar-${i}`), led = I(`disk-led-${i}`);
+        if(bar) bar.classList.add('anim');
+        if(led) led.classList.add('blink');
+      }
+    } else {
+      tower.classList.remove('active'); pwr.classList.remove('on');
+      for(let i=0; i<4; i++) {
+        const bar = I(`disk-bar-${i}`), led = I(`disk-led-${i}`);
+        if(bar) bar.classList.remove('anim');
+        if(led) led.classList.remove('blink');
+      }
+    }
+  }
+
+  // ── PACKETS ───────────────────────────────────────────────────────────────
+  const pCanvas = I('packet-canvas'), pCtx = pCanvas.getContext('2d');
+  let flyingPackets = [], packetRaf = null;
+
+  function resizePacketCanvas(){ pCanvas.width = I('arena').offsetWidth; pCanvas.height = I('arena').offsetHeight; }
+  
+  function launchPacket(fromIdx, isRealBox, color, isDoc=false) {
+    const fromEl = I(`${isRealBox?'real':'action'}-node-${fromIdx}`);
+    if(!fromEl) return;
+    const arenaRect = I('arena').getBoundingClientRect();
+    const fr = fromEl.getBoundingClientRect();
+    const srv = I('server-tower').getBoundingClientRect();
+    
+    flyingPackets.push({
+      sx: fr.left - arenaRect.left + 21, sy: fr.top - arenaRect.top + 21,
+      tx: srv.left - arenaRect.left + 32, ty: srv.top - arenaRect.top + 55,
+      startTime: performance.now(), dur: 1200 + Math.random()*600, color, isDoc
+    });
+    if(!packetRaf) packetRaf = requestAnimationFrame(drawPackets);
+  }
+
+  function drawPackets(now) {
+    pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+    flyingPackets = flyingPackets.filter(p => {
+      const t = Math.min((now - p.startTime) / p.dur, 1);
+      const x = p.sx + (p.tx - p.sx) * t, y = p.sy + (p.ty - p.sy) * t;
+      if (p.isDoc) {
+          // Document/Weight - Only for Aggregation
+          pCtx.fillStyle = 'rgba(255,255,255,0.1)';
+          pCtx.strokeStyle = p.color; pCtx.lineWidth = 1.5;
+          pCtx.beginPath(); pCtx.roundRect(x-7, y-10, 14, 20, 2); pCtx.fill(); pCtx.stroke();
+          pCtx.strokeStyle = 'rgba(255,255,255,0.5)'; pCtx.lineWidth = 1;
+          pCtx.beginPath(); pCtx.moveTo(x-4, y-4); pCtx.lineTo(x+4, y-4); pCtx.stroke();
+          pCtx.beginPath(); pCtx.moveTo(x-4, y+1); pCtx.lineTo(x+4, y+1); pCtx.stroke();
+      } else {
+          // Action Particle - For Attack/Scan phases
+          pCtx.fillStyle = p.color; 
+          pCtx.shadowBlur = 6; pCtx.shadowColor = p.color;
+          pCtx.beginPath(); pCtx.arc(x,y,4.5,0,Math.PI*2); pCtx.fill();
+          pCtx.shadowBlur = 0;
+      }
+      return t < 1;
+    });
+    if(flyingPackets.length) packetRaf = requestAnimationFrame(drawPackets);
+    else packetRaf = null;
+  }
+
+  // ── UI HELPERS ─────────────────────────────────────────────────────────────
+  function showToast(m, d=2500){ const t=I('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),d); }
+  function showLoading(v){ I('loading-overlay').style.display = v ? 'flex' : 'none'; }
+  function showError(m){ addLog(`ERROR: ${m}`, 'sys'); showToast(m); }
+  function toggleKey(){ const i=I('api-key-input'); i.type=i.type==='password'?'text':'password'; }
+
+  function buildGrids() {
+    const n = S.clientCount;
+    ['real', 'action'].forEach(g => {
+      const el = I(`${g}-grid`); el.innerHTML = '';
+      for(let i=0; i<n; i++) {
+        const d = document.createElement('div');
+        d.className = 'client-node good'; d.id = `${g}-node-${i}`;
+        d.innerHTML = `<div class="cn-num">${i}</div>${pcIconSVG(g==='real'?'#4da6ff':'#4da6ff', i)}`;
+        el.appendChild(d);
+      }
+    });
+  }
+
+  function updateNode(i, type, state) {
+    const el = I(`${type}-node-${i}`); if(!el) return;
+    const color = state === 'bad' ? '#ff5c5c' : state === 'quarantine' ? '#f59e0b' : '#4da6ff';
+    el.className = `client-node ${state}`;
+    el.querySelector('svg').outerHTML = pcIconSVG(color, i);
+  }
+
+  // ── CORE LOOP ──────────────────────────────────────────────────────────────
+  async function runRound() {
+    if(!S.running) return;
+    S.round++;
+    I('phase-banner').textContent = `Round ${S.round} / ${S.totalRounds} — ATTACK PHASE`;
+    I('phase-banner').style.color = 'var(--atk)';
+
+    const res = await apiStep();
+    if(!res) return;
+
+    // 1. Reset visual state for new round
+    I('atk-eyes').classList.remove('active');
+    I('def-eyes').classList.remove('active');
+    for(let i=0; i<S.clientCount; i++) {
+        updateNode(i, 'real', 'good');
+        updateNode(i, 'action', 'good');
+    }
+    await sleep(1000);
+
+    // 2. Attacker Action
+    I('atk-eyes').classList.add('active');
+    addLog(`Round ${S.round}: Attacker targets nodes [${res.attacker.targets.join(', ')}]`, 'atk');
+    res.poisoned_nodes.forEach(i => {
+      updateNode(i, 'real', 'bad');
+      if (res.attacker.targets.includes(i)) launchPacket(i, true, '#ff5c5c', true);
+    });
+    await addLogChunked(res.attacker.reasoning, 'atk');
+    await sleep(3500);
+    I('atk-eyes').classList.remove('active');
+
+    // 3. Defender Action
+    I('phase-banner').textContent = `Round ${S.round} — DETECTION PHASE`;
+    I('phase-banner').style.color = 'var(--def)';
+    I('def-eyes').classList.add('active');
+    addLog(`Round ${S.round}: Defender investigates nodes [${res.defender.targets.join(', ')}]`, 'def');
+    res.defender.targets.forEach(i => {
+      updateNode(i, 'action', 'quarantine');
+      launchPacket(i, false, '#4da6ff', true);
+    });
+    await addLogChunked(res.defender.explanation, 'def');
+    await sleep(3500);
+    I('def-eyes').classList.remove('active');
+
+    // 4. Aggregation Phase
+    I('phase-banner').textContent = `Round ${S.round} — WEIGHT AGGREGATION`;
+    I('phase-banner').style.color = 'var(--server)';
+    activateServerTower(true);
+    for(let i=0; i<S.clientCount; i++) {
+        const isPoisoned = res.poisoned_nodes.includes(i);
+        const isBlocked = res.defender.targets.includes(i);
+        if (!isBlocked) {
+            launchPacket(i, true, isPoisoned ? '#ff5c5c' : '#4da6ff', true);
         }
+        await sleep(250);
+    }
+    await sleep(3000);
+    activateServerTower(false);
+    
+    // Updates
+    S.totalDetections += res.metrics.correct_detections;
+    S.totalBreaches += res.metrics.attacker_breach;
+    S.totalFalsePositives += res.metrics.false_positives;
+    
+    I('atk-comp').textContent = S.totalBreaches;
+    I('def-blocked').textContent = S.totalDetections;
+    I('det-fp').textContent = S.totalFalsePositives;
+    I('det-fn').textContent = S.totalBreaches;
+
+    await sleep(3000);
+    if(S.round < S.totalRounds && S.running) runRound();
+    else endSim();
+  }
+
+  async function apiReset() {
+    const key = I('api-key-input').value.trim();
+    if(!key) { showError('Key required'); return null; }
+    showLoading(true);
+    try {
+      const r = await fetch(`${BASE_URL}/api/ui/reset`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({groq_api_key:key, num_clients:S.clientCount, difficulty:S.difficulty})
       });
-    }
-    function drawParticles() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles = particles.filter(p => {
-        p.x += p.vx; p.y += p.vy; p.vy += .014; p.life -= p.decay;
-        if (p.life <= 0) return false;
-        ctx.save(); ctx.globalAlpha = p.life * .9;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 5;
-        ctx.fill(); ctx.restore();
-        return true;
+      const data = await r.json();
+      if(!r.ok) throw new Error(data.detail || 'Reset failed');
+      return data;
+    } catch(e) { showError(e.message); return null; }
+    finally { showLoading(false); }
+  }
+
+  async function apiStep() {
+    try {
+      const r = await fetch(`${BASE_URL}/api/ui/step`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({groq_api_key:I('api-key-input').value.trim(), num_clients:S.clientCount, difficulty:S.difficulty})
       });
-    }
-    function particleLoop() {
-      if (!particleOn) { ctx.clearRect(0, 0, canvas.width, canvas.height); return }
-      spawnParticles(); drawParticles(); animFrame = requestAnimationFrame(particleLoop);
-    }
-    function startParticles() { particleOn = true; particleLoop() }
-    function stopParticles() { particleOn = false; if (animFrame) cancelAnimationFrame(animFrame); particles = []; ctx.clearRect(0, 0, canvas.width, canvas.height) }
+      const data = await r.json();
+      if(!r.ok) throw new Error(data.detail || 'Step failed');
+      return data;
+    } catch(e) { showError(e.message); S.running=false; return null; }
+  }
 
-    // ── AGENT VISUALS ──────────────────────────────────────────────────────────
-    let chestInterval = null;
-    function setOp(id, v) { const el = I(id); if (el) el.setAttribute('opacity', v) }
-    function activateAgent(who) {
-      const akEls = ['ak-eya', 'ak-eyb', 'ak-pa', 'ak-pb'], dkEls = ['dk-eya', 'dk-eyb', 'dk-pa', 'dk-pb'];
-      const akC = ['ak-c1', 'ak-c2', 'ak-c3'], dkC = ['dk-c1', 'dk-c2', 'dk-c3'];
-      if (who === 'atk') {
-        akEls.forEach((id, i) => setOp(id, i < 2 ? .85 : .95)); setOp('ak-ant', '1'); akC.forEach(id => setOp(id, '.88'));
-        dkEls.forEach((id, i) => setOp(id, i < 2 ? '.04' : '.08')); setOp('dk-ant', '.18'); dkC.forEach(id => setOp(id, '.07'));
-        I('ak-head').style.transform = 'rotate(14deg)'; I('dk-head').style.transform = 'rotate(0deg)';
-      } else if (who === 'def') {
-        dkEls.forEach((id, i) => setOp(id, i < 2 ? .85 : .95)); setOp('dk-ant', '1'); dkC.forEach(id => setOp(id, '.88'));
-        akEls.forEach((id, i) => setOp(id, i < 2 ? '.04' : '.08')); setOp('ak-ant', '.18'); akC.forEach(id => setOp(id, '.07'));
-        I('dk-head').style.transform = 'rotate(-14deg)'; I('ak-head').style.transform = 'rotate(0deg)';
-      } else {
-        [...akEls, ...dkEls].forEach((id, i) => setOp(id, i % 4 < 2 ? '.08' : '.18'));
-        [...akC, ...dkC].forEach(id => setOp(id, '.12'));
-        setOp('ak-ant', '.45'); setOp('dk-ant', '.45');
-        I('ak-head').style.transform = 'rotate(0deg)'; I('dk-head').style.transform = 'rotate(0deg)';
-      }
-    }
-    function startChestFlicker(who) {
-      stopChestFlicker();
-      const ids = who === 'atk' ? ['ak-c1', 'ak-c2', 'ak-c3'] : ['dk-c1', 'dk-c2', 'dk-c3'];
-      let t = 0;
-      chestInterval = setInterval(() => { t++; const v = (.55 + Math.sin(t * .4) * .33).toFixed(2); ids.forEach(id => { const el = I(id); if (el) el.setAttribute('opacity', v) }); }, 80);
-    }
-    function stopChestFlicker() { if (chestInterval) clearInterval(chestInterval); chestInterval = null }
+  async function startSimulation() {
+    if(S.running) { S.running = false; I('start-btn').textContent = '▶ Start Sim'; return; }
+    const config = await apiReset();
+    if(!config) return;
 
-    // ── PHASE ─────────────────────────────────────────────────────────────────
-    function setPhase(phase) {
-      S.phase = phase; stopChestFlicker();
-      const pb = I('phase-banner'), si = I('server-icon');
-      pb.className = '';
-      const atkP = I('atk-panel'), defP = I('def-panel'), atkB = I('atk-badge'), defB = I('def-badge');
-      if (phase === 'attack') {
-        pb.textContent = 'Attack Phase'; pb.className = 'pa';
-        atkP.className = 'agent-panel active-atk'; defP.className = 'agent-panel right dimmed';
-        atkB.className = 'status-badge badge-w'; atkB.textContent = 'Attacking';
-        defB.className = 'status-badge badge-idle'; defB.textContent = 'Standby';
-        si.classList.remove('active'); activateAgent('atk'); startChestFlicker('atk');
-      } else if (phase === 'detect') {
-        pb.textContent = 'Detection Phase'; pb.className = 'pd';
-        atkP.className = 'agent-panel dimmed'; defP.className = 'agent-panel right active-def';
-        atkB.className = 'status-badge badge-idle'; atkB.textContent = 'Waiting';
-        defB.className = 'status-badge badge-wd'; defB.textContent = 'Scanning';
-        si.classList.remove('active'); activateAgent('def'); startChestFlicker('def');
-      } else if (phase === 'aggregate') {
-        pb.textContent = 'Aggregating Weights'; pb.className = 'pg';
-        atkP.className = 'agent-panel dimmed'; defP.className = 'agent-panel right dimmed';
-        atkB.className = 'status-badge badge-idle'; atkB.textContent = 'Idle';
-        defB.className = 'status-badge badge-idle'; defB.textContent = 'Idle';
-        si.classList.add('active'); activateAgent(null);
-      } else {
-        pb.textContent = 'Idle';
-        atkP.className = 'agent-panel dimmed'; defP.className = 'agent-panel right dimmed';
-        atkB.className = 'status-badge badge-idle'; atkB.textContent = 'Standby';
-        defB.className = 'status-badge badge-idle'; defB.textContent = 'Standby';
-        si.classList.remove('active'); activateAgent(null);
-      }
-    }
+    S.running = true; S.round = 0; S.totalRounds = 10;
+    S.atkScore = {dmg:0,comp:0,wins:0}; S.defScore = {prot:0,blocked:0,wins:0};
+    I('start-btn').textContent = '⏹ Stop Sim';
+    I('unified-log').innerHTML = '';
+    addLog('Simulation Pipeline Initialized', 'sys');
+    buildGrids();
+    runRound();
+  }
 
-    // ── UI HELPERS ─────────────────────────────────────────────────────────────
-    function showError(msg) { const b = I('error-banner'); b.textContent = msg; b.classList.add('show'); setTimeout(() => b.classList.remove('show'), 5000) }
-    function hideError() { I('error-banner').classList.remove('show') }
-    function showToast(msg, dur = 2400) { const t = I('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), dur) }
-    function showLoading(v) { I('loading-overlay').classList.toggle('show', v) }
+  function resetAll() { location.reload(); }
+  function updateClientCount(v) { S.clientCount = parseInt(v); buildGrids(); }
+  function endSim() { S.running = false; I('start-btn').textContent = '▶ Start Sim'; addLog('Simulation Complete', 'sys'); showToast('End of Simulation'); }
 
-    function addLog(el, text, cls = '') {
-      const d = document.createElement('div'); d.className = 'log-line' + (cls ? ' ' + cls : '');
-      d.textContent = text; el.appendChild(d);
-      while (el.children.length > 30) el.removeChild(el.firstChild);
-      el.scrollTop = el.scrollHeight;
-    }
-
-    function buildPips() {
-      const rb = I('round-bar'); rb.innerHTML = '';
-      for (let i = 0; i < S.totalRounds; i++) {
-        const p = document.createElement('div'); p.className = 'round-pip'; p.id = `pip-${i}`; rb.appendChild(p);
-      }
-    }
-    function updatePips() {
-      for (let i = 0; i < S.totalRounds; i++) {
-        const p = I(`pip-${i}`); if (!p) continue;
-        p.className = 'round-pip' + (i < S.round ? ' done' : i === S.round ? ' active' : '');
-      }
-    }
-
-    // ── CLIENT GRID ────────────────────────────────────────────────────────────
-    function buildGrid() {
-      const n = S.clientCount, cols = Math.ceil(Math.sqrt(n * 1.35));
-      const cg = I('client-grid');
-      cg.style.gridTemplateColumns = `repeat(${cols},28px)`; cg.innerHTML = ''; S.nodes = [];
-      for (let i = 0; i < n; i++) {
-        const div = document.createElement('div'); div.className = 'client-node good'; div.id = `node-${i}`;
-        const dot = document.createElement('div'); dot.className = 'node-dot'; div.appendChild(dot);
-        cg.appendChild(div); S.nodes.push({ poisoned: false, blocked: false });
-      }
-      updateHUD();
-    }
-    function setNode(i, poisoned, blocked = false) {
-      const el = I(`node-${i}`); if (!el || i >= S.nodes.length) return;
-      S.nodes[i].poisoned = poisoned; S.nodes[i].blocked = blocked;
-      el.className = 'client-node ' + (blocked ? 'blocked' : poisoned ? 'bad' : 'good');
-    }
-    function updateHUD() {
-      I('hud-poisoned').textContent = S.nodes.filter(n => n.poisoned && !n.blocked).length;
-      I('hud-blocked').textContent = S.nodes.filter(n => n.blocked).length;
-    }
-    function setAccHud(acc) { I('hud-acc').textContent = acc.toFixed(3) }
-
-    function launchPacket(idx, poison) {
-      const el = I(`node-${idx}`); if (!el) return;
-      const ar = I('arena').getBoundingClientRect(), nr = el.getBoundingClientRect();
-      const sx = nr.left - ar.left + nr.width / 2, sy = nr.top - ar.top + nr.height / 2;
-      const pkt = document.createElement('div'); pkt.className = 'packet ' + (poison ? 'poison' : 'clean');
-      pkt.style.left = (sx - 2.5) + 'px'; pkt.style.top = (sy - 2.5) + 'px';
-      I('packets-layer').appendChild(pkt); setTimeout(() => pkt.remove(), 1400);
-    }
-
-    // ── SCORES ─────────────────────────────────────────────────────────────────
-    function updateScores() {
-      I('atk-dmg').textContent = S.atkScore.dmg.toFixed(2);
-      I('atk-comp').textContent = S.atkScore.comp;
-      I('atk-wins').textContent = S.atkScore.wins;
-      I('def-prot').textContent = S.defScore.prot.toFixed(2);
-      I('def-blocked').textContent = S.defScore.blocked;
-      I('def-wins').textContent = S.defScore.wins;
-      I('atk-dmg-bar').style.width = Math.min(Math.abs(S.atkScore.dmg) / 30 * 100, 100) + '%';
-      I('atk-comp-bar').style.width = Math.min(S.atkScore.comp / S.clientCount * 100, 100) + '%';
-      I('def-prot-bar').style.width = Math.min(Math.abs(S.defScore.prot) / 30 * 100, 100) + '%';
-      I('def-blocked-bar').style.width = Math.min(S.defScore.blocked / (S.totalRounds * 4) * 100, 100) + '%';
-    }
-
-    // ── BACKEND API CALLS ──────────────────────────────────────────────────────
-    async function apiReset() {
-      const key = I('api-key-input').value.trim();
-      if (!key) { showError('Please enter your Groq API key first!'); return null; }
-      const body = {
-        groq_api_key: key,
-        groq_model: I('model-select').value,
-        num_clients: S.clientCount,
-        num_rounds: S.totalRounds,
-        difficulty: S.difficulty
-      };
-      showLoading(true);
-      try {
-        const r = await fetch(`${BASE_URL}/api/ui/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!r.ok) { const e = await r.text(); throw new Error(`Server error ${r.status}: ${e}`); }
-        return await r.json();
-      } catch (e) { showError(e.message); return null; }
-      finally { showLoading(false); }
-    }
-
-    async function apiStep() {
-      const key = I('api-key-input').value.trim();
-      const body = {
-        groq_api_key: key,
-        groq_model: I('model-select').value,
-        num_clients: S.clientCount,
-        num_rounds: S.totalRounds,
-        difficulty: S.difficulty
-      };
-      showLoading(true);
-      try {
-        const r = await fetch(`${BASE_URL}/api/ui/step`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!r.ok) { const e = await r.text(); throw new Error(`Server error ${r.status}: ${e}`); }
-        return await r.json();
-      } catch (e) { showError(e.message); return null; }
-      finally { showLoading(false); }
-    }
-
-    // ── MAIN SIMULATION LOOP ───────────────────────────────────────────────────
-    async function runRound() {
-      if (!S.running) return;
-      S.round++; updatePips(); I('round-label').textContent = `Round ${S.round} / ${S.totalRounds}`;
-
-      // Clear nodes fresh for this round visuals
-      for (let i = 0; i < S.nodes.length; i++) setNode(i, false, false);
-
-      // ATTACK phase visual
-      setPhase('attack'); await sleep(400);
-
-      // CALL REAL BACKEND
-      const data = await apiStep();
-      if (!data) { S.running = false; I('start-btn').textContent = '▶ Start'; setPhase('idle'); return; }
-      if (data.error) { showError(data.error); S.running = false; setPhase('idle'); return; }
-
-      // Update nodes from real env poisoner data
-      S.poisonedNodes = data.poisoned_nodes || [];
-      const atkTargets = data.attacker?.targets || [];
-      const defTargets = data.defender?.targets || [];
-
-      // Mark poisoned
-      S.poisonedNodes.forEach(i => setNode(i, true, false));
-      addLog(I('atk-log'), `Round ${S.round} — ${data.attacker.attack_type} on [${atkTargets.join(',')}]`, 'ah');
-      addLog(I('atk-log'), data.attacker.reasoning || 'Deploying attack…', 'hi');
-      await sleep(500);
-
-      // DETECT phase
-      setPhase('detect'); await sleep(400);
-      defTargets.forEach(i => setNode(i, false, true));
-      updateHUD(); setAccHud(data.global_accuracy);
-      addLog(I('def-log'), `Round ${S.round} — ${data.defender.action_type} on [${defTargets.join(',')}]`, 'dh');
-      addLog(I('def-log'), data.defender.explanation || 'Scanning for anomalies…', 'hi');
-      await sleep(400);
-
-      // Update scores from real rewards
-      S.atkScore.dmg += data.attacker.reward;
-      S.defScore.prot += data.defender.reward;
-      S.atkScore.comp += data.metrics.attacker_breach || 0;
-      S.defScore.blocked += data.metrics.correct_detections || 0;
-      S.totalDetections += data.metrics.correct_detections || 0;
-      S.totalBreaches += data.metrics.attacker_breach || 0;
-
-      const atkWon = (data.metrics.attacker_breach || 0) > (data.metrics.correct_detections || 0);
-      if (atkWon) { S.atkScore.wins++; addLog(I('atk-log'), `Round ${S.round}: Breached ${data.metrics.attacker_breach} nodes`, 'ah'); }
-      else { S.defScore.wins++; addLog(I('def-log'), `Round ${S.round}: Blocked ${data.metrics.correct_detections}/${S.poisonedNodes.length}`, 'dh'); }
-      updateScores();
-
-      // AGGREGATE phase
-      setPhase('aggregate');
-      for (let i = 0; i < S.clientCount; i++) setTimeout(() => launchPacket(i, S.nodes[i]?.poisoned && !S.nodes[i]?.blocked), i * 50);
-      await sleep(S.clientCount * 52 + 700);
-
-      showToast(atkWon ? `Round ${S.round}: Attacker wins (Rew_A=${data.attacker.reward.toFixed(1)})` :
-        `Round ${S.round}: Defender wins (Rew_D=${data.defender.reward.toFixed(1)})`);
-
-      if (!data.done && S.round < S.totalRounds && S.running) {
-        await sleep(700); runRound();
-      } else {
-        endSim();
-      }
-    }
-
-    function endSim() {
-      S.running = false; I('start-btn').textContent = '▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker();
-      I('phase-banner').textContent = 'Simulation Complete';
-      const a = S.atkScore.wins, d = S.defScore.wins, w = a > d ? 'Attack Agent' : a < d ? 'Detection Agent' : 'Tie';
-      showToast(`Simulation complete — ${w} wins (${a}:${d})`, 4000);
-      addLog(I('atk-log'), `Done. Rounds won: ${a} | Total breach: ${S.totalBreaches}`, 'ah');
-      addLog(I('def-log'), `Done. Rounds won: ${d} | Total blocked: ${S.totalDetections}`, 'dh');
-    }
-
-    // ── CONTROLS ──────────────────────────────────────────────────────────────
-    async function startSimulation() {
-      if (S.running) { S.running = false; I('start-btn').textContent = '▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker(); return; }
-      const key = I('api-key-input').value.trim();
-      if (!key) { showError('Enter your Groq API key to start!'); return; }
-      hideError();
-      S.running = true; I('start-btn').textContent = '⏹ Stop';
-      I('start-overlay').classList.add('hidden');
-      S.totalRounds = parseInt(I('rounds-select').value) || 10;
-      S.difficulty = I('difficulty-select').value;
-      S.round = 0; S.atkScore = { dmg: 0, comp: 0, wins: 0 }; S.defScore = { prot: 0, blocked: 0, wins: 0 };
-      S.totalDetections = 0; S.totalBreaches = 0;
-      buildPips(); buildGrid(); updateScores();
-      I('atk-log').innerHTML = ''; I('def-log').innerHTML = '';
-      addLog(I('atk-log'), 'Simulation initialized');
-      addLog(I('def-log'), 'Detection systems online');
-      resizeCanvas(); startParticles();
-
-      // Reset the real backend env
-      const resetData = await apiReset();
-      if (!resetData) { S.running = false; I('start-btn').textContent = '▶ Start'; return; }
-      addLog(I('atk-log'), `Env ready: ${resetData.num_clients} clients, ${resetData.poisoner_count} poisoners`, 'hi');
-      addLog(I('def-log'), `Difficulty: ${resetData.difficulty} | Rounds: ${resetData.num_rounds}`, 'hi');
-
-      runRound();
-    }
-
-    function resetAll() {
-      S.running = false; S.round = 0;
-      S.atkScore = { dmg: 0, comp: 0, wins: 0 }; S.defScore = { prot: 0, blocked: 0, wins: 0 };
-      S.totalRounds = parseInt(I('rounds-select').value) || 10; S.difficulty = I('difficulty-select').value;
-      I('start-btn').textContent = '▶ Start'; setPhase('idle'); stopParticles(); stopChestFlicker();
-      buildPips(); buildGrid(); updateScores();
-      I('round-label').textContent = 'Round — / —';
-      I('atk-log').innerHTML = '<div class="log-line">Simulation reset.</div>';
-      I('def-log').innerHTML = '<div class="log-line">Simulation reset.</div>';
-      I('start-overlay').classList.remove('hidden'); I('packets-layer').innerHTML = '';
-      hideError();
-    }
-
-    function updateClientCount(val) { S.clientCount = parseInt(val); I('client-count-label').textContent = val; if (!S.running) buildGrid() }
-    function toggleKey() { const inp = I('api-key-input'); inp.type = inp.type === 'password' ? 'text' : 'password' }
-
-    // ── INIT ──────────────────────────────────────────────────────────────────
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas(); buildPips(); buildGrid(); activateAgent(null);
-  </script>
+  window.addEventListener('resize', resizePacketCanvas);
+  resizePacketCanvas(); buildGrids();
+</script>
 </body>
-
 </html>
