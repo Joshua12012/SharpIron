@@ -1,5 +1,5 @@
 ---
-title: SharpernerRL: Federated Adversarial Environment
+title: "SharpernerRL: Federated Adversarial Environment"
 emoji: 🛡️
 colorFrom: red
 colorTo: blue
