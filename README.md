@@ -1,254 +1,101 @@
 ---
-title: Federated Rlagent Environment Server
-emoji: 🥈
-colorFrom: gray
-colorTo: red
+title: SharpernerRL: Federated Adversarial Environment
+emoji: 🛡️
+colorFrom: red
+colorTo: blue
 sdk: docker
-pinned: false
 app_port: 8000
-tags:
-  - openenv
+pinned: false
+base_path: /web
 ---
 
-# Federated Rlagent Environment
+# SharpernerRL: Adversarial Federated Learning Simulation
 
-A simple test environment that echoes back messages. Perfect for testing the env APIs as well as demonstrating environment usage patterns.
+SharpernerRL is an advanced simulation environment for **Federated Learning Security**. It provides a platform to evaluate Red-Blue adversarial dynamics where a **Red Team (Attacker)** attempts to poison a global model and a **Blue Team (Defender)** attempts to detect anomalies and quarantine malicious clients.
 
-## Quick Start
+## 🚀 Quick Setup
 
-The simplest way to use the Federated Rlagent environment is through the `FederatedRlagentEnv` class:
-
-```python
-from federated_RLAgent import FederatedRlagentAction, FederatedRlagentEnv
-
-try:
-    # Create environment from Docker image
-    federated_RLAgentenv = FederatedRlagentEnv.from_docker_image("federated_RLAgent-env:latest")
-
-    # Reset
-    result = federated_RLAgentenv.reset()
-    print(f"Reset: {result.observation.echoed_message}")
-
-    # Send multiple messages
-    messages = ["Hello, World!", "Testing echo", "Final message"]
-
-    for msg in messages:
-        result = federated_RLAgentenv.step(FederatedRlagentAction(message=msg))
-        print(f"Sent: '{msg}'")
-        print(f"  → Echoed: '{result.observation.echoed_message}'")
-        print(f"  → Length: {result.observation.message_length}")
-        print(f"  → Reward: {result.reward}")
-
-finally:
-    # Always clean up
-    federated_RLAgentenv.close()
-```
-
-That's it! The `FederatedRlagentEnv.from_docker_image()` method handles:
-- Starting the Docker container
-- Waiting for the server to be ready
-- Connecting to the environment
-- Container cleanup when you call `close()`
-
-## Building the Docker Image
-
-Before using the environment, you need to build the Docker image:
-
+### 1. Install Dependencies
 ```bash
-# From project root
-docker build -t federated_RLAgent-env:latest -f server/Dockerfile .
+pip install -r requirements.txt
 ```
 
-## Deploying to Hugging Face Spaces
+### 2. Configure Environment
+Create a `.env` file (see `.env.example`) with your API keys:
+```env
+HF_TOKEN=your_token_here
+MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
+```
 
-You can easily deploy your OpenEnv environment to Hugging Face Spaces using the `openenv push` command:
-
+### 3. Run the System
+Start the backend server:
 ```bash
-# From the environment directory (where openenv.yaml is located)
-openenv push
-
-# Or specify options
-openenv push --namespace my-org --private
+python server/app.py
 ```
-
-The `openenv push` command will:
-1. Validate that the directory is an OpenEnv environment (checks for `openenv.yaml`)
-2. Prepare a custom build for Hugging Face Docker space (enables web interface)
-3. Upload to Hugging Face (ensuring you're logged in)
-
-### Prerequisites
-
-- Authenticate with Hugging Face: The command will prompt for login if not already authenticated
-
-### Options
-
-- `--directory`, `-d`: Directory containing the OpenEnv environment (defaults to current directory)
-- `--repo-id`, `-r`: Repository ID in format 'username/repo-name' (defaults to 'username/env-name' from openenv.yaml)
-- `--base-image`, `-b`: Base Docker image to use (overrides Dockerfile FROM)
-- `--private`: Deploy the space as private (default: public)
-
-### Examples
-
+In a new terminal, run the simulation:
 ```bash
-# Push to your personal namespace (defaults to username/env-name from openenv.yaml)
-openenv push
-
-# Push to a specific repository
-openenv push --repo-id my-org/my-env
-
-# Push with a custom base image
-openenv push --base-image ghcr.io/meta-pytorch/openenv-base:latest
-
-# Push as a private space
-openenv push --private
-
-# Combine options
-openenv push --repo-id my-org/my-env --base-image custom-base:latest --private
+python inference.py
 ```
 
-After deployment, your space will be available at:
-`https://huggingface.co/spaces/<repo-id>`
+---
 
-The deployed space includes:
-- **Web Interface** at `/web` - Interactive UI for exploring the environment
-- **API Documentation** at `/docs` - Full OpenAPI/Swagger interface
-- **Health Check** at `/health` - Container health monitoring
-- **WebSocket** at `/ws` - Persistent session endpoint for low-latency interactions
+## 🏗️ Project Structure
 
-## Environment Details
+This project follows the **OpenEnv** standard for federated reinforcement learning environments.
 
-### Action
-**FederatedRlagentAction**: Contains a single field
-- `message` (str) - The message to echo back
-
-### Observation
-**FederatedRlagentObservation**: Contains the echo response and metadata
-- `echoed_message` (str) - The message echoed back
-- `message_length` (int) - Length of the message
-- `reward` (float) - Reward based on message length (length × 0.1)
-- `done` (bool) - Always False for echo environment
-- `metadata` (dict) - Additional info like step count
-
-### Reward
-The reward is calculated as: `message_length × 0.1`
-- "Hi" → reward: 0.2
-- "Hello, World!" → reward: 1.3
-- Empty message → reward: 0.0
-
-## Advanced Usage
-
-### Connecting to an Existing Server
-
-If you already have a Federated Rlagent environment server running, you can connect directly:
-
-```python
-from federated_RLAgent import FederatedRlagentEnv
-
-# Connect to existing server
-federated_RLAgentenv = FederatedRlagentEnv(base_url="<ENV_HTTP_URL_HERE>")
-
-# Use as normal
-result = federated_RLAgentenv.reset()
-result = federated_RLAgentenv.step(FederatedRlagentAction(message="Hello!"))
-```
-
-Note: When connecting to an existing server, `federated_RLAgentenv.close()` will NOT stop the server.
-
-### Using the Context Manager
-
-The client supports context manager usage for automatic connection management:
-
-```python
-from federated_RLAgent import FederatedRlagentAction, FederatedRlagentEnv
-
-# Connect with context manager (auto-connects and closes)
-with FederatedRlagentEnv(base_url="http://localhost:8000") as env:
-    result = env.reset()
-    print(f"Reset: {result.observation.echoed_message}")
-    # Multiple steps with low latency
-    for msg in ["Hello", "World", "!"]:
-        result = env.step(FederatedRlagentAction(message=msg))
-        print(f"Echoed: {result.observation.echoed_message}")
-```
-
-The client uses WebSocket connections for:
-- **Lower latency**: No HTTP connection overhead per request
-- **Persistent session**: Server maintains your environment state
-- **Efficient for episodes**: Better for many sequential steps
-
-### Concurrent WebSocket Sessions
-
-The server supports multiple concurrent WebSocket connections. To enable this,
-modify `server/app.py` to use factory mode:
-
-```python
-# In server/app.py - use factory mode for concurrent sessions
-app = create_app(
-    FederatedRlagentEnvironment,  # Pass class, not instance
-    FederatedRlagentAction,
-    FederatedRlagentObservation,
-    max_concurrent_envs=4,  # Allow 4 concurrent sessions
-)
-```
-
-Then multiple clients can connect simultaneously:
-
-```python
-from federated_RLAgent import FederatedRlagentAction, FederatedRlagentEnv
-from concurrent.futures import ThreadPoolExecutor
-
-def run_episode(client_id: int):
-    with FederatedRlagentEnv(base_url="http://localhost:8000") as env:
-        result = env.reset()
-        for i in range(10):
-            result = env.step(FederatedRlagentAction(message=f"Client {client_id}, step {i}"))
-        return client_id, result.observation.message_length
-
-# Run 4 episodes concurrently
-with ThreadPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(run_episode, range(4)))
-```
-
-## Development & Testing
-
-### Direct Environment Testing
-
-Test the environment logic directly without starting the HTTP server:
-
-```bash
-# From the server directory
-python3 server/federated_RLAgent_environment.py
-```
-
-This verifies that:
-- Environment resets correctly
-- Step executes actions properly
-- State tracking works
-- Rewards are calculated correctly
-
-### Running Locally
-
-Run the server locally for development:
-
-```bash
-uvicorn server.app:app --reload
-```
-
-## Project Structure
-
-```
+```text
 federated_RLAgent/
-├── .dockerignore         # Docker build exclusions
-├── __init__.py            # Module exports
-├── README.md              # This file
-├── openenv.yaml           # OpenEnv manifest
-├── pyproject.toml         # Project metadata and dependencies
-├── uv.lock                # Locked dependencies (generated)
-├── client.py              # FederatedRlagentEnv client
-├── models.py              # Action and Observation models
-└── server/
-    ├── __init__.py        # Server module exports
-    ├── federated_RLAgent_environment.py  # Core environment logic
-    ├── app.py             # FastAPI application (HTTP + WebSocket endpoints)
-    └── Dockerfile         # Container image definition
+├── inference.py          # Main execution loop and evaluation runner
+├── client.py             # OpenEnv HTTP client
+├── sharperner_env.py     # Environment API wrapper
+├── models.py             # Pydantic data models (Actions/Observations)
+├── graders.py            # Logic for scoring tasks
+├── rewards.py            # Reward calculation logic
+├── openenv.yaml          # Manifest for OpenEnv discovery
+├── pyproject.toml        # Project metadata
+│
+├── agents/               # Intelligent Agent Logic
+│   ├── attacker.py       # LLM-based Red Team agent
+│   └── defender.py       # LLM-based Blue Team agent
+│
+├── server/               # Simulation Engine & API
+│   ├── app.py            # FastAPI server entry point
+│   ├── environment.py    # Core simulation mechanics
+│   └── static/           # Sentinel Dashboard UI (HTML/JS)
+│
+└── components/           # Logic for tasks and grades (if applicable)
+```
+
+---
+
+## 📊 How It Works
+
+1.  **Environment**: Manages a set of FL clients and a global model.
+2.  **Attacker**: Selects targets and applies poisoning strategies (e.g., *stealth*, *coordinated*).
+3.  **Defender**: Inspects client telemetry and anomalies to *detect* or *quarantine* nodes.
+4.  **Scoring**: Performance is graded across three tasks: **Detection Recall**, **Pattern Precision**, and **Adversarial Resilience**.
+
+### Manual UI Interaction
+The environment hosts a **Sharperner Dashboard** reachable at `http://localhost:8000/web` when the server is running. 
+
+![Dashboard Overview](Images/dashboard.png)
+
+
+---
+
+## 🏆 Baseline Performance
+
+| Task | Baseline Score | Success Threshold |
+| :--- | :--- | :--- |
+| **Detection Recall (Easy)** | **0.92** | 0.80 |
+| **Pattern Precision (Medium)** | **0.84** | 0.75 |
+| **Adversarial Resilience (Hard)** | **0.68** | 0.60 |
+
+---
+
+## 🐋 Docker Support
+To build and run as a container:
+```bash
+docker build -t sharperner-rl .
+docker run -p 8000:8000 sharperner-rl
 ```
