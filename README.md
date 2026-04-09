@@ -9,7 +9,14 @@ pinned: false
 base_path: /web
 ---
 
+<div align="center">
+
 # SharpernerRL: Adversarial Federated Learning Simulation
+
+[![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces/josh500/Sharpener)
+[![Hugging Face Profile](https://img.shields.io/badge/Hugging%20Face-Profile-blue)](https://huggingface.co/josh500)
+
+</div>
 
 SharpernerRL is an advanced simulation environment for **Federated Learning Security**. It provides a platform to evaluate Red-Blue adversarial dynamics where a **Red Team (Attacker)** attempts to poison a global model and a **Blue Team (Defender)** attempts to detect anomalies and quarantine malicious clients.
 
